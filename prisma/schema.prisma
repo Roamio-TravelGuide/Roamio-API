@@ -1,0 +1,367 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  admin
+  moderator
+  traveler
+  travel_guide
+  vendor
+}
+
+enum UserStatus {
+  pending
+  active
+  blocked
+}
+
+enum ReportStatus {
+  open
+  in_progress
+  resolved
+  rejected
+}
+
+enum PackageStatus {
+  pending_approval
+  published
+  rejected
+}
+
+enum MediaType {
+  image
+  audio
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+}
+
+enum HiddenPlaceStatus {
+  draft
+  pending
+  approved
+  rejected
+}
+
+enum BusinessType {
+  hotel
+  restaurant
+  transport
+  attraction
+  shop
+  other
+}
+
+enum ActivityType {
+  user_login
+  user_logout
+  user_registration
+  package_create
+  package_update
+  package_delete
+  package_publish
+  package_approve
+  package_reject
+  package_download
+  media_upload
+  media_delete
+  payment_success
+  payment_failed
+  payment_refund
+  report_submit
+  report_resolve
+  hidden_place_submit
+  hidden_place_approve
+  hidden_place_reject
+  review_post
+  review_update
+  review_delete
+  poi_create
+  poi_update
+  poi_delete
+  vendor_subscribe
+  vendor_unsubscribe
+  profile_update
+  password_change
+  admin_action
+  moderator_action
+  system_event
+  other
+}
+
+enum TargetType {
+  user
+  tour_package
+  tour_stop
+  media
+  payment
+  hidden_place
+  download
+  review
+  vendor
+  poi
+  location
+  report
+  system
+  none
+}
+
+enum LogUserType {
+  admin
+  moderator
+  traveler
+  travel_guide
+  vendor
+}
+
+enum POIStatus {
+  pending_approval
+  approved
+  rejected
+  archived
+}
+
+model User {
+  id                  Int                @id @default(autoincrement())
+  role                UserRole           @default(traveler)
+  status              UserStatus         @default(pending)
+  email               String             @unique
+  phone_no            String
+  name                String
+  registered_date     DateTime           @default(now()) @map("registered_date")
+  password_hash       String
+  last_login          DateTime?
+  profile_picture_url String?
+  bio                 String?
+
+  // Relations
+  guides           TravelGuide[]
+  travelers        Traveler[]
+  reports_reported Report[]      @relation("reported_reports")
+  payments         Payment[]
+  reviews_received Review[]      @relation("user_reviews")
+  reports_against_me Report[]    @relation("reported_users")
+  uploaded_media   Media[]       @relation("uploaded_media")
+  vendor_pois        POI[]         @relation("vendor_pois")
+
+
+  @@map("user")
+}
+
+model Report {
+  id                  Int          @id @default(autoincrement())
+  reporter            User         @relation("reported_reports", fields: [reporter_id], references: [id])
+  reporter_id         Int
+  reported_user       User?        @relation("reported_users", fields: [reported_user_id], references: [id])
+  reported_user_id    Int?
+  reported_package_id Int?
+  status              ReportStatus @default(open)
+  description         String
+  created_at          DateTime     @default(now()) @map("created_at")
+
+  @@map("report")
+}
+
+model Location {
+  id           Int     @id @default(autoincrement())
+  longitude    Float
+  latitude     Float
+  address      String?
+  city         String?
+  province     String?
+  district     String?
+  postal_code  String?
+
+  // Relations
+  tour_stops    TourStop[]
+  hidden_places HiddenPlace[]
+  pois          POI[]   @relation("poi_location")
+
+
+  @@index([latitude, longitude], name: "idx_location_coords")
+  @@index([city], name: "idx_location_city")
+  @@map("location")
+}
+
+model TravelGuide {
+  id                     Int                @id @default(autoincrement())
+  user                   User               @relation(fields: [user_id], references: [id])
+  user_id                Int                @unique
+  verification_documents String[]
+  years_of_experience    Int?
+  languages_spoken       String[]
+
+  // Relations
+  tour_packages TourPackage[]
+
+  @@map("travel_guide")
+}
+
+model TourPackage {
+  id               Int           @id @default(autoincrement())
+  guide            TravelGuide   @relation(fields: [guide_id], references: [id])
+  guide_id         Int
+  title            String
+  status           PackageStatus @default(pending_approval)
+  created_at       DateTime      @default(now()) @map("created_at")
+  updated_at       DateTime?
+  description      String?
+  price            Float
+  duration_minutes Int
+  rejection_reason String?
+
+  // Relations
+  tour_stops TourStop[]
+  payments   Payment[]
+  downloads  Download[]
+  reviews    Review[]
+
+  @@map("tour_package")
+}
+
+model TourStop {
+  id                      Int         @id @default(autoincrement())
+  package                 TourPackage @relation(fields: [package_id], references: [id])
+  package_id              Int
+  sequence_no             Int
+  description             String?
+  stop_name               String
+  location                Location?   @relation(fields: [location_id], references: [id])
+  location_id             Int?
+
+  // Relations
+  media TourStopMedia[]
+
+  @@unique([package_id, sequence_no])
+  @@map("tour_stop")
+}
+
+model Media {
+  id               Int         @id @default(autoincrement())
+  url              String
+  duration_seconds Int?
+  media_type       MediaType
+  uploader         User        @relation("uploaded_media", fields: [uploaded_by_id], references: [id])
+  uploaded_by_id   Int
+  file_size        BigInt?
+  format           String?
+
+  // Relations
+  tour_stop_media TourStopMedia[]
+  hidden_places   HiddenPlace[]
+
+  @@map("media")
+}
+
+model TourStopMedia {
+  stop     TourStop @relation(fields: [stop_id], references: [id])
+  stop_id  Int
+  media    Media    @relation(fields: [media_id], references: [id])
+  media_id Int
+
+  @@id([stop_id, media_id])
+  @@map("tour_stop_media")
+}
+
+model Traveler {
+  id                       Int      @id @default(autoincrement())
+  user                     User     @relation(fields: [user_id], references: [id])
+  user_id                  Int      @unique
+
+  // Relations
+  hidden_places HiddenPlace[]
+  downloads     Download[]
+  reviews       Review[]
+
+  @@map("traveler")
+}
+
+model Payment {
+  transaction_id         String        @id
+  user                   User          @relation(fields: [user_id], references: [id])
+  user_id                Int
+  amount                 Float
+  status                 PaymentStatus @default(pending)
+  currency               String        @default("LKR")
+  paid_at                DateTime?
+  invoice_number         String?
+  package                TourPackage?  @relation(fields: [package_id], references: [id])
+  package_id             Int?
+
+  @@map("payment")
+}
+
+model HiddenPlace {
+  id               Int               @id @default(autoincrement())
+  traveler         Traveler          @relation(fields: [traveler_id], references: [id])
+  traveler_id      Int
+  location         Location          @relation(fields: [location_id], references: [id])
+  location_id      Int
+  picture          Media?            @relation(fields: [picture_id], references: [id])
+  picture_id       Int?
+  description      String?
+  title            String
+  status           HiddenPlaceStatus @default(draft)
+  created_at       DateTime          @default(now()) @map("created_at")
+  verified_at      DateTime?
+  rejection_reason String?
+
+  @@map("hidden_place")
+}
+
+model Download {
+  id                 Int         @id @default(autoincrement())
+  traveler           Traveler    @relation(fields: [traveler_id], references: [id])
+  traveler_id        Int
+  package            TourPackage @relation(fields: [package_id], references: [id])
+  package_id         Int
+  date               DateTime    @default(now()) @map("date")
+  time               DateTime    @default(now()) @map("time")
+  file_size          BigInt?
+  url                String
+  
+  @@map("download")
+}
+
+model Review {
+  id            Int         @id @default(autoincrement())
+  traveler      Traveler    @relation(fields: [traveler_id], references: [id])
+  traveler_id   Int
+  package       TourPackage @relation(fields: [package_id], references: [id])
+  package_id    Int
+  rating        Int
+  date          DateTime    @default(now()) @map("date")
+  comments      String?
+
+  user    User @relation("user_reviews", fields: [user_id], references: [id])
+  user_id Int
+
+  @@map("review")
+}
+
+model POI {
+  id          Int         @id @default(autoincrement())
+  name        String
+  category    String
+  description String?
+  type        String
+  status      POIStatus   @default(pending_approval)
+  location    Location    @relation("poi_location", fields: [location_id], references: [id])
+  location_id Int
+  vendor      User        @relation("vendor_pois", fields: [vendor_id], references: [id])
+  vendor_id   Int
+  created_at  DateTime    @default(now())
+  rejection_reason String?
+
+  @@map("poi")
+}
