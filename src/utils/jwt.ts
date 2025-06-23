@@ -5,9 +5,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error('JWT_SECRET is not defined');
 
 interface TokenPayload {
-  userId: number;  // Changed to number to match your Prisma User.id (Int)
-  role?: UserRole; // Added role for authorization
-  email?: string;  // Additional claims if needed
+  userId: number;
+  role?: UserRole;
+  email?: string;
 }
 
 export const generateToken = (payload: TokenPayload) => 

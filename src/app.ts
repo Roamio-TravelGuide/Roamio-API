@@ -1,25 +1,28 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+// src/app.ts
+import express, { Application } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import routes from './routes'; // Import centralized routes
+import routes from './routes';
+import { errorHandler } from './middleware/error';
 
 dotenv.config();
 
 const app: Application = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-app.use('/api', routes);
+// Routes
+app.use('/api/v1', routes);
 
-app.get('/', (req: Request, res: Response) => {
+// Health check
+app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
+// Error handling middleware - MUST BE LAST
+app.use(errorHandler);
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 app.listen(PORT, () => {

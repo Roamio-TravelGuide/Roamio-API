@@ -30,7 +30,7 @@
     "typescript": "^5.8.3"
   },
   "prisma": {
-    "seed": "ts-node src/core/database/seeds/seed.ts"
+    "seed": "ts-node prisma/seed.ts"
   }
   
 }
