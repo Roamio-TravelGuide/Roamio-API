@@ -1,6 +1,6 @@
 // src/modules/web/repositories/authRepository.ts
 import { PrismaClient, User } from '@prisma/client';
-import { IUser } from '../interface/authInterfaces';
+import { IUser } from './interface';
 
 const prisma = new PrismaClient();
 

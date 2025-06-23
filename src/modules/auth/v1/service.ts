@@ -1,6 +1,6 @@
 // src/modules/web/services/authService.ts
-import { AuthRepository } from '../repositories/authRepository';
-import { ILoginRequest, ILoginResponse } from '../interface/authInterfaces';
+import { AuthRepository } from './repository';
+import { ILoginRequest, ILoginResponse } from './interface';
 import { comparePasswords, generateToken } from '../../../utils/index';
 
 export class AuthService {
