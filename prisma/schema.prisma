@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -99,38 +98,6 @@ enum ActivityType {
   other
 }
 
-enum TargetType {
-  user
-  tour_package
-  tour_stop
-  media
-  payment
-  hidden_place
-  download
-  review
-  vendor
-  poi
-  location
-  report
-  system
-  none
-}
-
-enum LogUserType {
-  admin
-  moderator
-  traveler
-  travel_guide
-  vendor
-}
-
-enum POIStatus {
-  pending_approval
-  approved
-  rejected
-  archived
-}
-
 model User {
   id                  Int                @id @default(autoincrement())
   role                UserRole           @default(traveler)
@@ -138,7 +105,7 @@ model User {
   email               String             @unique
   phone_no            String
   name                String
-  registered_date     DateTime           @default(now()) @map("registered_date")
+  registered_date     DateTime           @default(now())
   password_hash       String
   last_login          DateTime?
   profile_picture_url String?
@@ -152,8 +119,7 @@ model User {
   reviews_received Review[]      @relation("user_reviews")
   reports_against_me Report[]    @relation("reported_users")
   uploaded_media   Media[]       @relation("uploaded_media")
-  vendor_pois        POI[]         @relation("vendor_pois")
-
+  vendor_pois      POI[]         @relation("vendor_pois")
 
   @@map("user")
 }
@@ -167,7 +133,7 @@ model Report {
   reported_package_id Int?
   status              ReportStatus @default(open)
   description         String
-  created_at          DateTime     @default(now()) @map("created_at")
+  created_at          DateTime     @default(now())
 
   @@map("report")
 }
@@ -185,8 +151,7 @@ model Location {
   // Relations
   tour_stops    TourStop[]
   hidden_places HiddenPlace[]
-  pois          POI[]   @relation("poi_location")
-
+  pois          POI[]        @relation("poi_location")
 
   @@index([latitude, longitude], name: "idx_location_coords")
   @@index([city], name: "idx_location_city")
@@ -213,12 +178,14 @@ model TourPackage {
   guide_id         Int
   title            String
   status           PackageStatus @default(pending_approval)
-  created_at       DateTime      @default(now()) @map("created_at")
+  created_at       DateTime      @default(now())
   updated_at       DateTime?
   description      String?
   price            Float
   duration_minutes Int
   rejection_reason String?
+  cover_image_id   Int?
+  cover_image      Media? @relation("cover_images", fields: [cover_image_id], references: [id])
 
   // Relations
   tour_stops TourStop[]
@@ -226,23 +193,26 @@ model TourPackage {
   downloads  Download[]
   reviews    Review[]
 
+  @@index([guide_id])
+  @@index([status])
+  @@index([created_at])
   @@map("tour_package")
 }
 
 model TourStop {
-  id                      Int         @id @default(autoincrement())
-  package                 TourPackage @relation(fields: [package_id], references: [id])
-  package_id              Int
-  sequence_no             Int
-  description             String?
-  stop_name               String
-  location                Location?   @relation(fields: [location_id], references: [id])
-  location_id             Int?
+  id          Int         @id @default(autoincrement())
+  package     TourPackage @relation(fields: [package_id], references: [id])
+  package_id  Int
+  sequence_no Int
+  description String?
+  stop_name   String
+  location    Location?   @relation(fields: [location_id], references: [id])
+  location_id Int?
 
   // Relations
   media TourStopMedia[]
 
-  @@unique([package_id, sequence_no])
+  @@unique([package_id, sequence_no], name: "stop_ordering")
   @@map("tour_stop")
 }
 
@@ -259,6 +229,7 @@ model Media {
   // Relations
   tour_stop_media TourStopMedia[]
   hidden_places   HiddenPlace[]
+  tour_packages   TourPackage[] @relation("cover_images")
 
   @@map("media")
 }
@@ -274,9 +245,9 @@ model TourStopMedia {
 }
 
 model Traveler {
-  id                       Int      @id @default(autoincrement())
-  user                     User     @relation(fields: [user_id], references: [id])
-  user_id                  Int      @unique
+  id      Int    @id @default(autoincrement())
+  user    User   @relation(fields: [user_id], references: [id])
+  user_id Int    @unique
 
   // Relations
   hidden_places HiddenPlace[]
@@ -287,16 +258,16 @@ model Traveler {
 }
 
 model Payment {
-  transaction_id         String        @id
-  user                   User          @relation(fields: [user_id], references: [id])
-  user_id                Int
-  amount                 Float
-  status                 PaymentStatus @default(pending)
-  currency               String        @default("LKR")
-  paid_at                DateTime?
-  invoice_number         String?
-  package                TourPackage?  @relation(fields: [package_id], references: [id])
-  package_id             Int?
+  transaction_id String        @id
+  user           User          @relation(fields: [user_id], references: [id])
+  user_id        Int
+  amount         Float
+  status         PaymentStatus @default(pending)
+  currency       String        @default("LKR")
+  paid_at        DateTime?
+  invoice_number String?
+  package        TourPackage?  @relation(fields: [package_id], references: [id])
+  package_id     Int?
 
   @@map("payment")
 }
@@ -312,7 +283,7 @@ model HiddenPlace {
   description      String?
   title            String
   status           HiddenPlaceStatus @default(draft)
-  created_at       DateTime          @default(now()) @map("created_at")
+  created_at       DateTime          @default(now())
   verified_at      DateTime?
   rejection_reason String?
 
@@ -320,31 +291,31 @@ model HiddenPlace {
 }
 
 model Download {
-  id                 Int         @id @default(autoincrement())
-  traveler           Traveler    @relation(fields: [traveler_id], references: [id])
-  traveler_id        Int
-  package            TourPackage @relation(fields: [package_id], references: [id])
-  package_id         Int
-  date               DateTime    @default(now()) @map("date")
-  time               DateTime    @default(now()) @map("time")
-  file_size          BigInt?
-  url                String
+  id          Int         @id @default(autoincrement())
+  traveler    Traveler    @relation(fields: [traveler_id], references: [id])
+  traveler_id Int
+  package     TourPackage @relation(fields: [package_id], references: [id])
+  package_id  Int
+  date        DateTime    @default(now())
+  time        DateTime    @default(now())
+  file_size   BigInt?
+  url         String
   
   @@map("download")
 }
 
 model Review {
-  id            Int         @id @default(autoincrement())
-  traveler      Traveler    @relation(fields: [traveler_id], references: [id])
-  traveler_id   Int
-  package       TourPackage @relation(fields: [package_id], references: [id])
-  package_id    Int
-  rating        Int
-  date          DateTime    @default(now()) @map("date")
-  comments      String?
+  id         Int         @id @default(autoincrement())
+  traveler   Traveler    @relation(fields: [traveler_id], references: [id])
+  traveler_id Int
+  package    TourPackage @relation(fields: [package_id], references: [id])
+  package_id Int
+  rating     Int
+  date       DateTime    @default(now())
+  comments   String?
 
-  user    User @relation("user_reviews", fields: [user_id], references: [id])
-  user_id Int
+  user       User        @relation("user_reviews", fields: [user_id], references: [id])
+  user_id    Int
 
   @@map("review")
 }
@@ -364,4 +335,11 @@ model POI {
   rejection_reason String?
 
   @@map("poi")
+}
+
+enum POIStatus {
+  pending_approval
+  approved
+  rejected
+  archived
 }
