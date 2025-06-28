@@ -1,0 +1,299 @@
+import prisma from '../../../database/connection';
+import { 
+  TourPackageFilters, 
+  TourPackageResponse, 
+  TourPackagesListResponse, 
+  TourPackageStatistics,
+  CreateTourPackageRequest,
+  UpdateStatusRequest 
+} from './interface';
+
+function convertPrice(price: unknown): number {
+  if (typeof price === 'number') {
+    return price;
+  }
+  if (typeof price === 'object' && price !== null && 'toNumber' in price) {
+    return (price as { toNumber: () => number }).toNumber();
+  }
+  return 0;
+}
+
+export class TourPackageService {
+  /**
+   * Get tour packages with filters and pagination
+   */
+  async getTourPackages(filters: TourPackageFilters = {}): Promise<TourPackagesListResponse> {
+    const {
+      status,
+      search,
+      location,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 10
+    } = filters;
+
+    // Build where clause
+    const where: any = {};
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    if (location) {
+      where.location = { contains: location, mode: 'insensitive' };
+    }
+
+    if (dateFrom || dateTo) {
+      where.created_at = {};
+      if (dateFrom) {
+        where.created_at.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        where.created_at.lte = new Date(dateTo);
+      }
+    }
+
+    // Get total count
+    const total = await prisma.tourPackage.count({ where });
+
+    // Get paginated results
+    const packages = await prisma.tourPackage.findMany({
+      where,
+      include: {
+        guide: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit
+    });
+
+    // Transform to match interface
+    const transformedPackages: TourPackageResponse[] = packages.map(pkg => ({
+      id: pkg.id,
+      title: pkg.title,
+      description: pkg.description ?? null,
+      price: convertPrice(pkg.price),
+      duration_minutes: pkg.duration_minutes,
+      status: pkg.status,
+      rejection_reason: pkg.rejection_reason ?? undefined,
+      created_at: pkg.created_at.toISOString(),
+      updated_at: pkg.updated_at?.toISOString() ?? new Date().toISOString(),
+      guide_id: pkg.guide_id,
+      guide: pkg.guide ? {
+        user: pkg.guide.user,
+        years_of_experience: pkg.guide.years_of_experience ?? 0,
+        languages_spoken: pkg.guide.languages_spoken as string[]
+      } : undefined
+    }));
+
+    return {
+      packages: transformedPackages,
+      total,
+      page,
+      limit
+    };
+  }
+
+  /**
+   * Get tour package by ID
+   */
+  async getTourPackageById(id: number): Promise<TourPackageResponse | null> {
+    const tourPackage = await prisma.tourPackage.findUnique({
+      where: { id },
+      include: {
+        guide: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!tourPackage) {
+      return null;
+    }
+
+    return {
+      id: tourPackage.id,
+      title: tourPackage.title,
+      description: tourPackage.description ?? null,
+      price: convertPrice(tourPackage.price),
+      duration_minutes: tourPackage.duration_minutes,
+      status: tourPackage.status,
+      rejection_reason: tourPackage.rejection_reason ?? undefined,
+      created_at: tourPackage.created_at.toISOString(),
+      updated_at: tourPackage.updated_at?.toISOString() ?? new Date().toISOString(),
+      guide_id: tourPackage.guide_id,
+      guide: tourPackage.guide ? {
+        user: tourPackage.guide.user,
+        years_of_experience: tourPackage.guide.years_of_experience ?? 0,
+        languages_spoken: tourPackage.guide.languages_spoken as string[]
+      } : undefined
+    };
+  }
+
+  /**
+   * Create a new tour package
+   */
+  async createTourPackage(packageData: CreateTourPackageRequest): Promise<TourPackageResponse> {
+    const { title, description, price, duration_minutes, guide_id } = packageData;
+    
+    const newPackage = await prisma.tourPackage.create({
+      data: {
+        title,
+        description,
+        price,
+        duration_minutes,
+        guide_id,
+        status: 'pending_approval'
+      },
+      include: {
+        guide: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return {
+      id: newPackage.id,
+      title: newPackage.title,
+      description: newPackage.description ?? null,
+      price: convertPrice(newPackage.price),
+      duration_minutes: newPackage.duration_minutes,
+      status: newPackage.status,
+      rejection_reason: newPackage.rejection_reason ?? undefined,
+      created_at: newPackage.created_at.toISOString(),
+      updated_at: newPackage.updated_at?.toISOString() ?? new Date().toISOString(),
+      guide_id: newPackage.guide_id,
+      guide: newPackage.guide ? {
+        user: newPackage.guide.user,
+        years_of_experience: newPackage.guide.years_of_experience ?? 0,
+        languages_spoken: newPackage.guide.languages_spoken as string[]
+      } : undefined
+    };
+  }
+
+  /**
+   * Update tour package status
+   */
+  async updateTourPackageStatus(id: number, statusData: UpdateStatusRequest): Promise<TourPackageResponse | null> {
+    const { status, rejection_reason } = statusData;
+    
+    try {
+      const updatedPackage = await prisma.tourPackage.update({
+        where: { id },
+        data: {
+          status,
+          rejection_reason: rejection_reason || null,
+          updated_at: new Date()
+        },
+        include: {
+          guide: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      return {
+        id: updatedPackage.id,
+        title: updatedPackage.title,
+        description: updatedPackage.description ?? null,
+      price: convertPrice(updatedPackage.price),
+        duration_minutes: updatedPackage.duration_minutes,
+        status: updatedPackage.status,
+        rejection_reason: updatedPackage.rejection_reason ?? undefined,
+        created_at: updatedPackage.created_at.toISOString(),
+        updated_at: updatedPackage.updated_at?.toISOString() ?? new Date().toISOString(),
+        guide_id: updatedPackage.guide_id,
+        guide: updatedPackage.guide ? {
+          user: updatedPackage.guide.user,
+          years_of_experience: updatedPackage.guide.years_of_experience ?? 0,
+          languages_spoken: updatedPackage.guide.languages_spoken as string[]
+        } : undefined
+      };
+    } catch (error: any) {
+      if (error.code === 'P2025') { // Record not found
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get tour package statistics
+   */
+  async getTourPackageStatistics(): Promise<TourPackageStatistics> {
+    const [pending, published, rejected, total] = await Promise.all([
+      prisma.tourPackage.count({ where: { status: 'pending_approval' } }),
+      prisma.tourPackage.count({ where: { status: 'published' } }),
+      prisma.tourPackage.count({ where: { status: 'rejected' } }),
+      prisma.tourPackage.count()
+    ]);
+
+    return {
+      pending,
+      published,
+      rejected,
+      total
+    };
+  }
+
+  /**
+   * Delete tour package
+   */
+  async deleteTourPackage(id: number): Promise<boolean> {
+    try {
+      await prisma.tourPackage.delete({
+        where: { id }
+      });
+      return true;
+    } catch (error: any) {
+      if (error.code === 'P2025') { // Record not found
+        return false;
+      }
+      throw error;
+    }
+  }
+}
+
+export default new TourPackageService();
