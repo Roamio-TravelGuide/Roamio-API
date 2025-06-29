@@ -10,7 +10,9 @@ dotenv.config();
 const app: Application = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+   methods: ['PATCH']
+}));
 app.use(express.json());
 
 // Routes
