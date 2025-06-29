@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authRoutes from './modules/auth/v1/route';
 import tourPackageRoutes from './modules/tour-package/v1/route'
+import userRoutes from './modules/users/v1/route';
 
 const router = Router();
 
@@ -12,6 +13,8 @@ router.get('/', (req, res) => {
 
 router.use('/auth', authRoutes);
 router.use('/tour-packages', tourPackageRoutes);
+
+router.use('/users', userRoutes);
 
 
 router.get('/health', (req, res) => {
