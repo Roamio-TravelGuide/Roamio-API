@@ -16,7 +16,7 @@ router.get('/:id', tourPackageController.getTourPackageById);
 // router.post('/', tourPackageController.createTourPackage);
 
 // PATCH /api/tour-packages/:id/status - Update tour package status
-router.get('/:id/status', tourPackageController.updateTourPackageStatus);
+router.patch('/:id/status', tourPackageController.updateTourPackageStatus);
 
 // DELETE /api/tour-packages/:id - Delete tour package
 // router.delete('/:id', tourPackageController.deleteTourPackage);

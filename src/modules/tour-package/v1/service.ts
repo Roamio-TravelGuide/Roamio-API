@@ -116,45 +116,76 @@ export class TourPackageService {
    * Get tour package by ID
    */
   async getTourPackageById(id: number): Promise<TourPackageResponse | null> {
-    const tourPackage = await prisma.tourPackage.findUnique({
-      where: { id },
-      include: {
-        guide: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
+  const tourPackage = await prisma.tourPackage.findUnique({
+    where: { id },
+    include: {
+      guide: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      },
+      tour_stops: {
+        orderBy: { sequence_no: 'asc' },
+        include: {
+          media: {
+            include: {
+              media: true
             }
           }
         }
       }
-    });
-
-    if (!tourPackage) {
-      return null;
     }
+  });
 
-    return {
-      id: tourPackage.id,
-      title: tourPackage.title,
-      description: tourPackage.description ?? null,
-      price: convertPrice(tourPackage.price),
-      duration_minutes: tourPackage.duration_minutes,
-      status: tourPackage.status,
-      rejection_reason: tourPackage.rejection_reason ?? undefined,
-      created_at: tourPackage.created_at.toISOString(),
-      updated_at: tourPackage.updated_at?.toISOString() ?? new Date().toISOString(),
-      guide_id: tourPackage.guide_id,
-      guide: tourPackage.guide ? {
-        user: tourPackage.guide.user,
-        years_of_experience: tourPackage.guide.years_of_experience ?? 0,
-        languages_spoken: tourPackage.guide.languages_spoken as string[]
-      } : undefined
-    };
+  if (!tourPackage) {
+    return null;
   }
+
+  return {
+    id: tourPackage.id,
+    title: tourPackage.title,
+    description: tourPackage.description ?? null,
+    price: convertPrice(tourPackage.price),
+    duration_minutes: tourPackage.duration_minutes,
+    status: tourPackage.status,
+    rejection_reason: tourPackage.rejection_reason ?? undefined,
+    created_at: tourPackage.created_at.toISOString(),
+    updated_at: tourPackage.updated_at?.toISOString() ?? new Date().toISOString(),
+    guide_id: tourPackage.guide_id,
+    guide: tourPackage.guide ? {
+      user: {
+        id: tourPackage.guide.user.id,
+        name: tourPackage.guide.user.name,
+        email: tourPackage.guide.user.email
+      },
+      years_of_experience: tourPackage.guide.years_of_experience ?? 0,
+      languages_spoken: tourPackage.guide.languages_spoken as string[]
+    } : undefined,
+    tour_stops: tourPackage.tour_stops.map((stop) => ({
+      id: stop.id,
+      sequence_no: stop.sequence_no,
+      stop_name: stop.stop_name,
+      description: stop.description ?? null,
+      location_id: stop.location_id ?? null,
+      media: stop.media.map((m) => ({
+        id: m.media.id,
+        url: m.media.url,
+        duration_seconds: m.media.duration_seconds ?? undefined,
+        media_type: m.media.media_type,
+        uploaded_by_id: m.media.uploaded_by_id,
+        file_size: m.media.file_size ? Number(m.media.file_size) : undefined,
+        format: m.media.format ?? undefined
+      }))
+    }))
+  };
+}
+
 
   /**
    * Create a new tour package

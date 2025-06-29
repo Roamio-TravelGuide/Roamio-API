@@ -1,5 +1,11 @@
 import { PrismaClient, PackageStatus } from '@prisma/client';
-import { TourPackageFilters, TourPackageResponse, TourPackageStatistics } from './interface';
+import {
+  TourPackageFilters,
+  TourPackageResponse,
+  TourPackageStatistics,
+  MediaItem,
+  TourStopResponse
+} from './interface';
 
 const prisma = new PrismaClient();
 
@@ -16,14 +22,12 @@ export class TourPackageRepository {
     } = filters;
 
     const skip = (page - 1) * limit;
-    
-    // Build where clause
     const where: any = {};
-    
+
     if (status) {
       where.status = status as PackageStatus;
     }
-    
+
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -37,7 +41,7 @@ export class TourPackageRepository {
         }
       ];
     }
-    
+
     if (dateFrom || dateTo) {
       where.created_at = {};
       if (dateFrom) {
@@ -48,7 +52,6 @@ export class TourPackageRepository {
       }
     }
 
-    // Execute queries
     const [packages, total] = await Promise.all([
       prisma.tourPackage.findMany({
         where,
@@ -60,6 +63,16 @@ export class TourPackageRepository {
                   id: true,
                   name: true,
                   email: true
+                }
+              }
+            }
+          },
+          tour_stops: {
+            orderBy: { sequence_no: 'asc' },
+            include: {
+              media: {
+                include: {
+                  media: true
                 }
               }
             }
@@ -94,6 +107,16 @@ export class TourPackageRepository {
               }
             }
           }
+        },
+        tour_stops: {
+          orderBy: { sequence_no: 'asc' },
+          include: {
+            media: {
+              include: {
+                media: true
+              }
+            }
+          }
         }
       }
     });
@@ -102,8 +125,8 @@ export class TourPackageRepository {
   }
 
   async updateStatus(
-    id: number, 
-    status: 'published' | 'rejected', 
+    id: number,
+    status: 'published' | 'rejected',
     rejectionReason?: string
   ): Promise<TourPackageResponse> {
     const updateData: any = {
@@ -128,6 +151,16 @@ export class TourPackageRepository {
                 id: true,
                 name: true,
                 email: true
+              }
+            }
+          }
+        },
+        tour_stops: {
+          orderBy: { sequence_no: 'asc' },
+          include: {
+            media: {
+              include: {
+                media: true
               }
             }
           }
@@ -177,6 +210,16 @@ export class TourPackageRepository {
               }
             }
           }
+        },
+        tour_stops: {
+          orderBy: { sequence_no: 'asc' },
+          include: {
+            media: {
+              include: {
+                media: true
+              }
+            }
+          }
         }
       }
     });
@@ -198,19 +241,37 @@ export class TourPackageRepository {
       price: tourPackage.price,
       duration_minutes: tourPackage.duration_minutes,
       status: tourPackage.status,
-      rejection_reason: tourPackage.rejection_reason,
+      rejection_reason: tourPackage.rejection_reason ?? undefined,
       created_at: tourPackage.created_at.toISOString(),
-      updated_at: tourPackage.updated_at.toISOString(),
+      updated_at: tourPackage.updated_at?.toISOString() ?? new Date().toISOString(),
       guide_id: tourPackage.guide_id,
-      guide: tourPackage.guide ? {
-        user: {
-          id: tourPackage.guide.user.id,
-          name: tourPackage.guide.user.name,
-          email: tourPackage.guide.user.email
-        },
-        years_of_experience: tourPackage.guide.years_of_experience,
-        languages_spoken: tourPackage.guide.languages_spoken
-      } : undefined
+      guide: tourPackage.guide
+        ? {
+            user: {
+              id: tourPackage.guide.user.id,
+              name: tourPackage.guide.user.name,
+              email: tourPackage.guide.user.email
+            },
+            years_of_experience: tourPackage.guide.years_of_experience ?? 0,
+            languages_spoken: tourPackage.guide.languages_spoken as string[]
+          }
+        : undefined,
+      tour_stops: tourPackage.tour_stops?.map((stop: any): TourStopResponse => ({
+        id: stop.id,
+        sequence_no: stop.sequence_no,
+        stop_name: stop.stop_name,
+        description: stop.description ?? null,
+        location_id: stop.location_id ?? null,
+        media: stop.media.map((m: any): MediaItem => ({
+          id: m.media.id,
+          url: m.media.url,
+          duration_seconds: m.media.duration_seconds ?? undefined,
+          media_type: m.media.media_type,
+          uploaded_by_id: m.media.uploaded_by_id,
+          file_size: m.media.file_size ? Number(m.media.file_size) : undefined,
+          format: m.media.format ?? undefined
+        }))
+      }))
     };
   }
 }
