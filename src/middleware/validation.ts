@@ -8,7 +8,7 @@ export const validateRequest = (validations: any[]) => {
 
     const errors = validationResult(req);
     if (errors.isEmpty()) {
-      return next(); // Proceed if no errors
+      return next();
     }
 
     // Handle errors without returning

@@ -57,43 +57,31 @@ export const validateUpdateStatus = [
 ];
 
 export const validateCreateTourPackage = [
-  body('title')
-    .notEmpty()
-    .isLength({ min: 1, max: 200 })
-    .withMessage('Title is required and must be between 1 and 200 characters'),
-  
-  body('description')
-    .notEmpty()
-    .isLength({ min: 1, max: 1000 })
-    .withMessage('Description is required and must be between 1 and 1000 characters'),
-  
-  body('price')
-    .isFloat({ min: 0.01 })
-    .withMessage('Price must be a positive number'),
-  
-  body('duration_minutes')
-    .isInt({ min: 1 })
-    .withMessage('Duration must be a positive integer (in minutes)'),
-  
-  body('guide_id')
-    .isInt({ min: 1 })
-    .withMessage('Guide ID must be a positive integer'),
+  body('title').trim().isLength({ min: 3, max: 200 }).withMessage('Title must be 3-200 characters'),
+  body('description').optional().trim().isLength({ min: 10, max: 2000 }).withMessage('Description must be 10-2000 characters'),
+  body('price').isFloat({ min: 0.01 }).withMessage('Price must be at least 0.01'),
+  body('duration_minutes').isInt({ min: 1 }).withMessage('Duration must be at least 1 minute'),
+  body('guide_id').isInt({ min: 1 }).withMessage('Invalid guide ID'),
+  body('tour_stops').isArray({ min: 1 }).withMessage('At least one tour stop is required'),
+  body('tour_stops.*.sequence_no').isInt({ min: 1 }).withMessage('Stop sequence must be at least 1'),
+  body('tour_stops.*.stop_name').trim().isLength({ min: 2, max: 100 }).withMessage('Stop name must be 2-100 characters'),
+  body('tour_stops.*.location').optional().isObject().withMessage('Location must be an object'),
+  body('tour_stops.*.location.longitude').optional().isFloat().withMessage('Invalid longitude'),
+  body('tour_stops.*.location.latitude').optional().isFloat().withMessage('Invalid latitude'),
+  body('tour_stops.*.media').optional().isArray().withMessage('Media must be an array'),
+  body('tour_stops.*.media.*.url').optional().isURL().withMessage('Invalid media URL'),
+  body('tour_stops.*.media.*.media_type').optional().isIn(['image', 'audio']).withMessage('Invalid media type'),
+  body('cover_image_url').optional().isURL().withMessage('Invalid cover image URL')
 ];
 
-// export const handleValidationErrors = (
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   const errors = validationResult(req);
-  
-//   if (!errors.isEmpty()) {
-//     return res.status(400).json({
-//       success: false,
-//       message: 'Validation failed',
-//       errors: errors.array()
-//     });
-//   }
-  
-//   next();
-// };
+export const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array()
+    });
+  }
+  next();
+};

@@ -5,8 +5,10 @@ import {
   TourPackagesListResponse, 
   TourPackageStatistics,
   CreateTourPackageRequest,
-  UpdateStatusRequest 
+  UpdateStatusRequest,
+
 } from './interface';
+import { tourPackageRepository } from './repository';
 
 function convertPrice(price: unknown): number {
   if (typeof price === 'number') {
@@ -187,54 +189,15 @@ export class TourPackageService {
 }
 
 
-  /**
-   * Create a new tour package
-   */
-  async createTourPackage(packageData: CreateTourPackageRequest): Promise<TourPackageResponse> {
-    const { title, description, price, duration_minutes, guide_id } = packageData;
-    
-    const newPackage = await prisma.tourPackage.create({
-      data: {
-        title,
-        description,
-        price,
-        duration_minutes,
-        guide_id,
-        status: 'pending_approval'
-      },
-      include: {
-        guide: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return {
-      id: newPackage.id,
-      title: newPackage.title,
-      description: newPackage.description ?? null,
-      price: convertPrice(newPackage.price),
-      duration_minutes: newPackage.duration_minutes,
-      status: newPackage.status,
-      rejection_reason: newPackage.rejection_reason ?? undefined,
-      created_at: newPackage.created_at.toISOString(),
-      updated_at: newPackage.updated_at?.toISOString() ?? new Date().toISOString(),
-      guide_id: newPackage.guide_id,
-      guide: newPackage.guide ? {
-        user: newPackage.guide.user,
-        years_of_experience: newPackage.guide.years_of_experience ?? 0,
-        languages_spoken: newPackage.guide.languages_spoken as string[]
-      } : undefined
-    };
+  async createTourPackage(tourData: CreateTourPackageRequest): Promise<any> {
+    try {
+      return await tourPackageRepository.createTourPackage(tourData);
+    } catch (error) {
+      console.error('Error in createTourPackage service:', error);
+      throw error;
+    }
   }
+
 
   /**
    * Update tour package status
@@ -325,6 +288,22 @@ export class TourPackageService {
       throw error;
     }
   }
+
+  async getTourPackagesByGuideId(guideId: number){
+    try {
+      // console.log(guideId);
+      if (!guideId || isNaN(guideId)) {
+        throw new Error('Invalid guide ID');
+      }
+
+      return await tourPackageRepository.findByGuideId(guideId);
+    } catch (error) {
+      console.error('Error in getTourPackagesByGuideId service:', error);
+      throw error;
+    }
+  }
+
+
 }
 
 export default new TourPackageService();

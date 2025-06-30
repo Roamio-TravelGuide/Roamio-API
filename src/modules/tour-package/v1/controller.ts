@@ -83,69 +83,28 @@ export class TourPackageController {
   /**
    * Create new tour package
    */
-  // async createTourPackage(req: Request, res: Response): Promise<void> {
-  //   try {
-  //     const { title, description, price, duration_minutes, guide_id }: CreateTourPackageRequest = req.body;
+  async createTourPackage(req: Request, res: Response): Promise<void> {
+    try {
+      // The validation middleware has already run at this point
+      const packageData = req.body;
 
-  //     // Validation
-  //     if (!title || !description || !price || !duration_minutes || !guide_id) {
-  //       res.status(400).json({
-  //         success: false,
-  //         message: 'Missing required fields: title, description, price, duration_minutes, guide_id'
-  //       });
-  //       return;
-  //     }
-
-  //     if (price <= 0) {
-  //       res.status(400).json({
-  //         success: false,
-  //         message: 'Price must be greater than 0'
-  //       });
-  //       return;
-  //     }
-
-  //     if (duration_minutes <= 0) {
-  //       res.status(400).json({
-  //         success: false,
-  //         message: 'Duration must be greater than 0 minutes'
-  //       });
-  //       return;
-  //     }
-
-  //     const packageData: CreateTourPackageRequest = {
-  //       title: title.trim(),
-  //       description: description.trim(),
-  //       price: parseFloat(price.toString()),
-  //       duration_minutes: parseInt(duration_minutes.toString()),
-  //       guide_id: parseInt(guide_id.toString())
-  //     };
-
-  //     const newPackage = await tourPackageService.createTourPackage(packageData);
+      const newPackage = await tourPackageService.createTourPackage(packageData);
+      res.status(201).json({
+        success: true,
+        data: newPackage
+      });
+    } catch (error: any) {
+      console.error("Error creating tour package:", error);
       
-  //     res.status(201).json({
-  //       success: true,
-  //       message: 'Tour package created successfully',
-  //       data: newPackage
-  //     });
-  //   } catch (error: any) {
-  //     console.error('Error creating tour package:', error);
+      const statusCode = error.statusCode || 500;
+      const message = error.message || "Failed to create tour package";
       
-  //     // Handle specific database errors
-  //     if (error.code === '23503') { // Foreign key violation
-  //       res.status(400).json({
-  //         success: false,
-  //         message: 'Invalid guide_id provided'
-  //       });
-  //       return;
-  //     }
-
-  //     res.status(500).json({
-  //       success: false,
-  //       message: 'Internal server error',
-  //       error: process.env.NODE_ENV === 'development' ? error.message : undefined
-  //     });
-  //   }
-  // }
+      res.status(statusCode).json({ 
+        success: false,
+        error: message,
+      });
+    }
+  }
 
   /**
    * Update tour package status
@@ -230,6 +189,43 @@ export class TourPackageController {
     }
   }
 
+  async getTourPackagesByGuideId(req: Request, res: Response): Promise<void> {
+    try {
+      const { guideId } = req.params;
+
+      // console.log(req.params);
+      
+      if (!guideId || isNaN(parseInt(guideId))) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid guide ID'
+        });
+        return;
+      }
+
+      const tourPackages = await tourPackageService.getTourPackagesByGuideId(parseInt(guideId));
+      
+      if (!tourPackages || tourPackages.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'No tour packages found for this guide'
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: tourPackages
+      });
+    } catch (error: any) {
+      console.error('Error fetching tour packages by guide:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+}
   /**
    * Delete tour package
    */
