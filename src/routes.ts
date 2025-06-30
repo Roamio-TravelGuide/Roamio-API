@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from './modules/auth/v1/route';
 import tourPackageRoutes from './modules/tour-package/v1/route'
 import userRoutes from './modules/users/v1/route';
+// import tourRoutes from './modules/tour/v1/route'
 
 const router = Router();
 

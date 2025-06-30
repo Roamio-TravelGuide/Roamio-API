@@ -1,10 +1,11 @@
-import { PrismaClient, PackageStatus } from '@prisma/client';
+import { Prisma, PrismaClient, MediaType, PackageStatus , TourPackage } from '@prisma/client';
 import {
   TourPackageFilters,
   TourPackageResponse,
   TourPackageStatistics,
   MediaItem,
-  TourStopResponse
+  TourStopResponse,
+  CreateTourPackageRequest
 } from './interface';
 
 const prisma = new PrismaClient();
@@ -226,6 +227,7 @@ export class TourPackageRepository {
 
     return this.mapToResponse(tourPackage);
   }
+  
 
   async delete(id: number): Promise<void> {
     await prisma.tourPackage.delete({
@@ -274,4 +276,195 @@ export class TourPackageRepository {
       }))
     };
   }
+
+  async getTourPackageById(id: number): Promise<any | null> {
+    return prisma.tourPackage.findUnique({
+      where: { id },
+      include: {
+        guide: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                profile_picture_url: true,
+                bio: true
+              }
+            }
+          }
+        },
+        cover_image: true,
+        tour_stops: {
+          include: {
+            location: true,
+            media: {
+              include: {
+                media: true
+              }
+            }
+          },
+          orderBy: { sequence_no: 'asc' }
+        },
+        reviews: {
+          include: {
+            traveler: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    profile_picture_url: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { date: 'desc' }
+        }
+      }
+    });
+  }
+
+  async createTourPackage(tourData: CreateTourPackageRequest): Promise<any> {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Verify the TravelGuide exists using user_id
+    const guide = await tx.travelGuide.findFirst({
+      where: { user_id: tourData.guide_id },
+      select: { id: true }
+    });
+
+    if (!guide) {
+      throw new Error(
+        `User ${tourData.guide_id} doesn't have a TravelGuide profile. ` +
+        `Please create a guide profile first.`
+      );
+    }
+
+    // 2. Create the tour package using proper relation connections
+    const packageData: Prisma.TourPackageCreateInput = {
+      title: tourData.title,
+      description: tourData.description || undefined,
+      price: tourData.price,
+      duration_minutes: tourData.duration_minutes,
+      status: PackageStatus.pending_approval,
+      guide: { connect: { id: guide.id } }, // Connect to TravelGuide.id
+      cover_image: tourData.cover_image_url ? {
+        create: {
+          url: tourData.cover_image_url,
+          media_type: MediaType.image,
+          uploader: { connect: { id: tourData.guide_id } } // Connect to User.id
+        }
+      } : undefined,
+      tour_stops: {
+        create: tourData.tour_stops.map(stop => ({
+          sequence_no: stop.sequence_no,
+          stop_name: stop.stop_name,
+          description: stop.description || undefined,
+          location: stop.location ? {
+            create: {
+              longitude: stop.location.longitude,
+              latitude: stop.location.latitude,
+              address: stop.location.address || undefined,
+              city: stop.location.city || undefined,
+              province: stop.location.province || undefined,
+              district: stop.location.district || undefined,
+              postal_code: stop.location.postal_code || undefined
+            }
+          } : undefined,
+          media: {
+            create: stop.media?.map(mediaItem => ({
+              media: {
+                create: {
+                  url: mediaItem.url,
+                  media_type: mediaItem.media_type as MediaType,
+                  uploader: { connect: { id: tourData.guide_id } },
+                  duration_seconds: mediaItem.duration_seconds,
+                  format: mediaItem.url.split('.').pop()
+                }
+              }
+            })) || []
+          }
+        }))
+      }
+    };
+
+    // 3. Create the complete tour package with all relations
+    const createdPackage = await tx.tourPackage.create({
+      data: packageData,
+      include: {
+        tour_stops: {
+          include: {
+            media: {
+              include: {
+                media: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return this.getTourPackageById(createdPackage.id);
+  });
 }
+
+async findByGuideId(guideId: number): Promise<TourPackage[]> {
+  try {
+    return await prisma.tourPackage.findMany({
+      where: { 
+        guide_id: guideId,
+        status: 'published'
+      },
+      include: {
+        guide: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                profile_picture_url: true
+              }
+            }
+          }
+        },
+        cover_image: true,
+        tour_stops: {
+          include: {
+            location: true,
+            media: {
+              include: {
+                media: true
+              }
+            }
+          },
+          orderBy: { sequence_no: 'asc' }
+        },
+        reviews: {
+          include: {
+            traveler: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    profile_picture_url: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { date: 'desc' },
+          take: 5
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+  } catch (error) {
+    console.error('Error in findByGuideId repository:', error);
+    throw new Error('Failed to fetch tour packages by guide ID');
+  }
+}
+}
+
+export const tourPackageRepository = new TourPackageRepository();
