@@ -218,21 +218,27 @@ model TourStop {
 
 model Media {
   id               Int         @id @default(autoincrement())
-  url              String
+  url              String      @unique
+  s3_key           String      @unique
   duration_seconds Int?
   media_type       MediaType
   uploader         User        @relation("uploaded_media", fields: [uploaded_by_id], references: [id])
   uploaded_by_id   Int
   file_size        BigInt?
   format           String?
+  created_at       DateTime    @default(now())
+  width            Int?        
+  height           Int?        
+  bitrate          Int?        
+  sample_rate      Int?        
 
-  // Relations
   tour_stop_media TourStopMedia[]
   hidden_places   HiddenPlace[]
   tour_packages   TourPackage[] @relation("cover_images")
 
   @@map("media")
 }
+
 
 model TourStopMedia {
   stop     TourStop @relation(fields: [stop_id], references: [id])
