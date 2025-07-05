@@ -1,0 +1,13 @@
+import { Router } from 'express';
+import tourPackageController from './controller.js';
+
+const router = Router();
+
+router.get('/', tourPackageController.getTourPackages);
+router.get('/statistics', tourPackageController.getTourPackageStatistics);
+router.get('/:id', tourPackageController.getTourPackageById);
+router.get('/guide/:guideId', tourPackageController.getTourPackagesByGuideId);
+router.post('/createTour', tourPackageController.createTourPackage);
+router.patch('/:id/status', tourPackageController.updateTourPackageStatus);
+
+export default router;
