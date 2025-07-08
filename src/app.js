@@ -22,7 +22,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/v1', routes);
-
+ 
 // Health check
 app.get('/', (req, res) => {
   res.send('Server is running');

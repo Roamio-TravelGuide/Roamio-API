@@ -1,14 +1,20 @@
-import { Router } from 'express';
-import { AuthController } from './controller.js';
-import { authValidations } from './validate.js';
-import { validateRequest } from '../../../middleware/validation.js';
+import { Router } from "express";
+import { AuthController } from "./controller.js";
+import { authValidations } from "./validate.js";
+import { validateRequest } from "../../../middleware/validation.js";
 
 const router = Router();
 
 router.post(
-  '/login',
+  "/login",
   validateRequest(authValidations.login),
   AuthController.login
+);
+
+router.post(
+  "/signup",
+  validateRequest(authValidations.signup),
+  AuthController.signup
 );
 
 export default router;

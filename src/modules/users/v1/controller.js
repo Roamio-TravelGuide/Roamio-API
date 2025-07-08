@@ -1,17 +1,13 @@
-import { Request, Response } from "express";
-import { UserService } from "./service";
-import { UserFilterOptions, UserRole, UserStatus } from "./interface";
+import { UserService } from './service';
 
-export class UserController {
-    private userService: UserService;
-
+class UserController {
     constructor() {
         this.userService = new UserService();
     }
 
-    async getUsers(req: Request, res: Response): Promise<void> {
+    async getUsers(req, res) {
         try {
-            const filterOptions: UserFilterOptions = {
+            const filterOptions = {
                 role: this.parseUserRole(req.query.role),
                 status: this.parseUserStatus(req.query.status),
                 search: req.query.search ? String(req.query.search) : undefined,
@@ -26,7 +22,7 @@ export class UserController {
                 success: true,
                 data: users
             });
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error fetching users:', error);
             res.status(500).json({
                 success: false,
@@ -36,30 +32,30 @@ export class UserController {
         }
     }
 
-    private parseUserRole(role: unknown): UserRole | undefined {
+    parseUserRole(role) {
         if (typeof role !== 'string') return undefined;
-        const validRoles: UserRole[] = ['admin', 'moderator', 'traveler', 'travel_guide', 'vendor'];
-        return validRoles.includes(role as UserRole) ? role as UserRole : undefined;
+        const validRoles = ['admin', 'moderator', 'traveler', 'travel_guide', 'vendor'];
+        return validRoles.includes(role) ? role : undefined;
     }
 
-    private parseUserStatus(status: unknown): UserStatus | undefined {
+    parseUserStatus(status) {
         if (typeof status !== 'string') return undefined;
-        const validStatuses: UserStatus[] = ['pending', 'active', 'blocked'];
-        return validStatuses.includes(status as UserStatus) ? status as UserStatus : undefined;
+        const validStatuses = ['pending', 'active', 'blocked'];
+        return validStatuses.includes(status) ? status : undefined;
     }
 
-    private parseSortBy(sortBy: unknown): 'registered_date' | 'name' | 'last_login' | undefined {
+    parseSortBy(sortBy) {
         if (typeof sortBy !== 'string') return undefined;
         const validSortFields = ['registered_date', 'name', 'last_login'];
-        return validSortFields.includes(sortBy) ? sortBy as 'registered_date' | 'name' | 'last_login' : undefined;
+        return validSortFields.includes(sortBy) ? sortBy : undefined;
     }
 
-    private parseSortOrder(sortOrder: unknown): 'asc' | 'desc' | undefined {
+    parseSortOrder(sortOrder) {
         if (typeof sortOrder !== 'string') return undefined;
-        return sortOrder === 'asc' || sortOrder === 'desc' ? sortOrder as 'asc' | 'desc' : undefined;
+        return sortOrder === 'asc' || sortOrder === 'desc' ? sortOrder : undefined;
     }
 
-    async updateUserStatus(req: Request, res: Response): Promise<void> {
+    async updateUserStatus(req, res) {
         try {
             const { userId } = req.params;
             const { status } = req.body;
@@ -77,7 +73,7 @@ export class UserController {
                 success: true,
                 message: 'User status updated successfully'
             });
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error updating user status:', error);
             res.status(500).json({
                 success: false,
@@ -88,3 +84,4 @@ export class UserController {
     }
 }
 
+module.exports = { UserController };

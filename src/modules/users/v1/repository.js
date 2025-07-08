@@ -1,16 +1,13 @@
-import { PrismaClient } from '@prisma/client';
-import { User, UserFilterOptions } from './interface';
+import  { PrismaClient } from '@prisma/client';
 
-export class UserRepository {
-    private prisma: PrismaClient;
-
+class UserRepository {
     constructor() {
         this.prisma = new PrismaClient();
     }
 
-    public async getAllUsers(filterOptions?: UserFilterOptions): Promise<Partial<User>[]> {
+    async getAllUsers(filterOptions) {
         try {
-            const whereClause: any = {};
+            const whereClause = {};
             
             if (filterOptions?.role) {
                 whereClause.role = filterOptions.role;
@@ -49,14 +46,14 @@ export class UserRepository {
                 take: filterOptions?.limit
             });
 
-            return users as Partial<User>[];
+            return users;
         } catch (error) {
             console.error('Error fetching users:', error);
             throw new Error('Failed to fetch users');
         }
     }
 
-    public async updateUserStatus(userId: number, status: 'active' | 'blocked'): Promise<void> {
+    async updateUserStatus(userId, status) {
         try {
             await this.prisma.user.update({
                 where: { id: userId },
@@ -68,3 +65,5 @@ export class UserRepository {
         }
     }
 }
+
+module.exports = { UserRepository };
