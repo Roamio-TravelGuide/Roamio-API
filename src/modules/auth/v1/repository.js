@@ -25,13 +25,15 @@ class AuthRepository {
 
   async createUser(userData) {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
+
+    const status = userData.role === 'traveler' ? 'active' : 'pending';
     
     const baseUserData = {
       name: userData.name,
       email: userData.email,
       phone_no: userData.phone_no,
       role: userData.role,
-      status: "pending",
+      status: status,
       password_hash: hashedPassword,
       profile_picture_url: userData.profile_picture_url || '',
       bio: userData.bio || '',

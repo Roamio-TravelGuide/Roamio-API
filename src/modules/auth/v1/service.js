@@ -15,6 +15,11 @@ class AuthService {
 
     if (!user) throw new Error("User not found");
 
+    // Check if user status is pending
+    if (user.status === "pending") {
+      throw new Error("Your account is pending approval. Please wait for admin approval or check your email for updates.");
+    }
+
     const isPasswordValid = await comparePasswords(
       loginData.password,
       user.password_hash

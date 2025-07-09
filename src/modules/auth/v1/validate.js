@@ -7,7 +7,7 @@ const authValidations = {
   ],
   signup: [
     body('name').notEmpty(),
-    body('role').isIn(['traveler', 'travel_guide', 'vendor']), // Fixed typo 'travaler' → 'traveler'
+    body('role').isIn(['traveler', 'travel_guide', 'vendor']),
     body('email').isEmail().normalizeEmail(),
     body('password').isLength({ min: 6 }),
     body('phone_no').isMobilePhone(),
