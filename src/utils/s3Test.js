@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { s3Client, bucketName } from '../config/s3.config';
+import { s3Client, bucketName } from '../config/s3.config.js';
 import { ListBucketsCommand } from '@aws-sdk/client-s3';
 
 async function testS3Connection() {

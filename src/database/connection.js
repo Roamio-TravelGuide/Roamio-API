@@ -1,8 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
-// Initialize Prisma with standard PostgreSQL connection
 const prisma = new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'] // Optional logging
+  log: ['query', 'info', 'warn', 'error']
 });
 
 const checkDbConnection = async () => {
