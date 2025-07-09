@@ -58,6 +58,7 @@ class AuthRepository {
             data: {
               user_id: user.id,
               years_of_experience: userData.years_of_experience || 0,
+              verification_documents:userData. verification_documents,
               languages_spoken: userData.languages_spoken || ["English"],
             },
           });
