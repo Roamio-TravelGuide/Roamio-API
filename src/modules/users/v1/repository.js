@@ -1,6 +1,6 @@
-import  { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
-class UserRepository {
+export class UserRepository {
     constructor() {
         this.prisma = new PrismaClient();
     }
@@ -65,5 +65,3 @@ class UserRepository {
         }
     }
 }
-
-module.exports = { UserRepository };

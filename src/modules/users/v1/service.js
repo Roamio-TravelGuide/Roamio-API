@@ -1,6 +1,6 @@
-import { UserRepository } from './repository';
+import { UserRepository } from './repository.js';
 
-class UserService {
+export class UserService {
     constructor() {
         this.userRepository = new UserRepository();
     }
@@ -13,5 +13,3 @@ class UserService {
         return this.userRepository.updateUserStatus(userId, status);
     }
 }
-
-module.exports = { UserService };
