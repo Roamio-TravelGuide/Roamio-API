@@ -201,5 +201,121 @@ export class StorageService {
         throw new Error(`Invalid file type: ${fileRef.type}`);
     }
   } 
+  // Get all media URLs for a tour package (for moderators)
+  async getTourPackageMediaUrls(packageId) {
+    try {
+      const package_id = parseInt(packageId);
+      
+      // Get all media associated with this tour package
+      const tourPackageData = await prisma.tourPackage.findUnique({
+        where: { id: package_id },
+        include: {
+          cover_image: true,
+          tour_stops: {
+            include: {
+              media: {
+                include: {
+                  media: true
+                }
+              }
+            },
+            orderBy: { sequence_no: 'asc' }
+          }
+        }
+      });
+
+      if (!tourPackageData) {
+        throw new Error(`Tour package with ID ${packageId} not found`);
+      }
+
+      const result = {
+        cover_image: null,
+        tour_stops: []
+      };
+
+      // Add cover image if exists
+      if (tourPackageData.cover_image) {
+        const coverUrl = await this.getFileUrl(tourPackageData.cover_image.s3_key);
+        result.cover_image = {
+          id: tourPackageData.cover_image.id,
+          media_type: tourPackageData.cover_image.media_type,
+          url: coverUrl,
+          s3_key: tourPackageData.cover_image.s3_key,
+          format: tourPackageData.cover_image.format,
+          file_size: tourPackageData.cover_image.file_size
+        };
+      }
+
+      // Process tour stops
+      for (const stop of tourPackageData.tour_stops) {
+        const stopMedia = [];
+        
+        for (const tourStopMedia of stop.media) {
+          const mediaUrl = await this.getFileUrl(tourStopMedia.media.s3_key);
+          stopMedia.push({
+            id: tourStopMedia.media.id,
+            media_type: tourStopMedia.media.media_type,
+            url: mediaUrl,
+            s3_key: tourStopMedia.media.s3_key,
+            format: tourStopMedia.media.format,
+            file_size: tourStopMedia.media.file_size,
+            duration_seconds: tourStopMedia.media.duration_seconds,
+            width: tourStopMedia.media.width,
+            height: tourStopMedia.media.height
+          });
+        }
+
+        result.tour_stops.push({
+          id: stop.id,
+          sequence_no: stop.sequence_no,
+          stop_name: stop.stop_name,
+          description: stop.description,
+          media: stopMedia
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error in getTourPackageMediaUrls:', error);
+      throw error;
+    }
+  }
+
+  // Get signed URLs for specific media files by IDs
+  async getMediaUrls(mediaIds) {
+    try {
+      const ids = mediaIds.map(id => parseInt(id));
+      
+      const mediaRecords = await prisma.media.findMany({
+        where: {
+          id: { in: ids }
+        }
+      });
+
+      if (mediaRecords.length === 0) {
+        throw new Error('No media found with provided IDs');
+      }
+
+      const mediaWithUrls = await Promise.all(
+        mediaRecords.map(async (media) => {
+          const url = await this.getFileUrl(media.s3_key);
+          return {
+            id: media.id,
+            media_type: media.media_type,
+            url: url,
+            s3_key: media.s3_key,
+            format: media.format,
+            file_size: media.file_size,
+            duration_seconds: media.duration_seconds
+          };
+        })
+      );
+
+      return mediaWithUrls;
+    } catch (error) {
+      console.error('Error in getMediaUrls:', error);
+      throw error;
+    }
+  }
 }
 
