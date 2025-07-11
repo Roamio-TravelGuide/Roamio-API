@@ -181,6 +181,147 @@ export class StorageService {
   async getFileUrl(s3Key, expiresIn = 3600) {
     return this.repository.getSignedUrl(s3Key, expiresIn);
   }
+
+  // Get signed URLs for tour package media (for moderators)
+  async getTourPackageMediaUrls(packageId) {
+    try {
+      // Get all media for the tour package including cover image and tour stop media
+      const tourPackage = await prisma.tourPackage.findUnique({
+        where: { id: parseInt(packageId) },
+        include: {
+          cover_image: true,
+          tour_stops: {
+            orderBy: { sequence_no: 'asc' },
+            include: {
+              media: {
+                include: {
+                  media: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!tourPackage) {
+        throw new Error('Tour package not found');
+      }
+
+      const mediaWithUrls = {};
+
+      // Generate URL for cover image if it exists
+      if (tourPackage.cover_image?.s3_key) {
+        try {
+          // Check if s3_key is valid
+          if (tourPackage.cover_image.s3_key === 'undefined' || tourPackage.cover_image.s3_key === '') {
+            console.warn(`Cover image ${tourPackage.cover_image.id} has invalid s3_key: "${tourPackage.cover_image.s3_key}"`);
+            mediaWithUrls.cover_image = {
+              ...tourPackage.cover_image,
+              url: tourPackage.cover_image.url // Use existing URL
+            };
+          } else {
+            const coverImageUrl = await this.repository.getSignedUrl(tourPackage.cover_image.s3_key, 7200); // 2 hours
+            mediaWithUrls.cover_image = {
+              ...tourPackage.cover_image,
+              url: coverImageUrl
+            };
+          }
+        } catch (error) {
+          console.error(`Failed to generate URL for cover image: ${error.message}`);
+          mediaWithUrls.cover_image = {
+            ...tourPackage.cover_image,
+            url: tourPackage.cover_image.url // Fallback to existing URL
+          };
+        }
+      }
+
+      // Generate URLs for tour stop media
+      mediaWithUrls.tour_stops = await Promise.all(
+        tourPackage.tour_stops.map(async (stop) => {        const mediaWithSignedUrls = await Promise.all(
+          stop.media.map(async (stopMedia) => {
+            try {
+              // Check if s3_key is valid
+              if (!stopMedia.media.s3_key || stopMedia.media.s3_key === 'undefined' || stopMedia.media.s3_key === '') {
+                console.warn(`Media ${stopMedia.media.id} has invalid s3_key: "${stopMedia.media.s3_key}"`);
+                return {
+                  ...stopMedia.media,
+                  url: stopMedia.media.url // Use existing URL (might be external URL from seed data)
+                };
+              }
+              
+              const signedUrl = await this.repository.getSignedUrl(stopMedia.media.s3_key, 7200); // 2 hours
+              return {
+                ...stopMedia.media,
+                url: signedUrl
+              };
+            } catch (error) {
+              console.error(`Failed to generate URL for media ${stopMedia.media.id}: ${error.message}`);
+              return {
+                ...stopMedia.media,
+                url: stopMedia.media.url // Fallback to existing URL
+              };
+            }
+          })
+        );
+
+          return {
+            ...stop,
+            media: mediaWithSignedUrls
+          };
+        })
+      );
+
+      return mediaWithUrls;
+    } catch (error) {
+      console.error('Error generating tour package media URLs:', error);
+      throw new Error('Failed to retrieve tour media URLs');
+    }
+  }
+
+  // Get signed URLs for specific media files
+  async getMediaUrls(mediaIds) {
+    try {
+      const mediaRecords = await prisma.media.findMany({
+        where: {
+          id: {
+            in: mediaIds.map(id => parseInt(id))
+          }
+        }
+      });
+
+      const mediaWithUrls = await Promise.all(
+        mediaRecords.map(async (media) => {
+          try {
+            // Check if s3_key is valid
+            if (!media.s3_key || media.s3_key === 'undefined' || media.s3_key === '') {
+              console.warn(`Media ${media.id} has invalid s3_key: "${media.s3_key}"`);
+              return {
+                ...media,
+                url: media.url // Use existing URL
+              };
+            }
+            
+            const signedUrl = await this.repository.getSignedUrl(media.s3_key, 3600); // 1 hour
+            return {
+              ...media,
+              url: signedUrl
+            };
+          } catch (error) {
+            console.error(`Failed to generate URL for media ${media.id}: ${error.message}`);
+            return {
+              ...media,
+              url: media.url // Fallback to existing URL
+            };
+          }
+        })
+      );
+
+      return mediaWithUrls;
+    } catch (error) {
+      console.error('Error generating media URLs:', error);
+      throw new Error('Failed to retrieve media URLs');
+    }
+  }
   
   _getPermanentKey(fileRef, packageId) {
     if (!fileRef?.key) {
@@ -201,121 +342,5 @@ export class StorageService {
         throw new Error(`Invalid file type: ${fileRef.type}`);
     }
   } 
-  // Get all media URLs for a tour package (for moderators)
-  async getTourPackageMediaUrls(packageId) {
-    try {
-      const package_id = parseInt(packageId);
-      
-      // Get all media associated with this tour package
-      const tourPackageData = await prisma.tourPackage.findUnique({
-        where: { id: package_id },
-        include: {
-          cover_image: true,
-          tour_stops: {
-            include: {
-              media: {
-                include: {
-                  media: true
-                }
-              }
-            },
-            orderBy: { sequence_no: 'asc' }
-          }
-        }
-      });
-
-      if (!tourPackageData) {
-        throw new Error(`Tour package with ID ${packageId} not found`);
-      }
-
-      const result = {
-        cover_image: null,
-        tour_stops: []
-      };
-
-      // Add cover image if exists
-      if (tourPackageData.cover_image) {
-        const coverUrl = await this.getFileUrl(tourPackageData.cover_image.s3_key);
-        result.cover_image = {
-          id: tourPackageData.cover_image.id,
-          media_type: tourPackageData.cover_image.media_type,
-          url: coverUrl,
-          s3_key: tourPackageData.cover_image.s3_key,
-          format: tourPackageData.cover_image.format,
-          file_size: tourPackageData.cover_image.file_size
-        };
-      }
-
-      // Process tour stops
-      for (const stop of tourPackageData.tour_stops) {
-        const stopMedia = [];
-        
-        for (const tourStopMedia of stop.media) {
-          const mediaUrl = await this.getFileUrl(tourStopMedia.media.s3_key);
-          stopMedia.push({
-            id: tourStopMedia.media.id,
-            media_type: tourStopMedia.media.media_type,
-            url: mediaUrl,
-            s3_key: tourStopMedia.media.s3_key,
-            format: tourStopMedia.media.format,
-            file_size: tourStopMedia.media.file_size,
-            duration_seconds: tourStopMedia.media.duration_seconds,
-            width: tourStopMedia.media.width,
-            height: tourStopMedia.media.height
-          });
-        }
-
-        result.tour_stops.push({
-          id: stop.id,
-          sequence_no: stop.sequence_no,
-          stop_name: stop.stop_name,
-          description: stop.description,
-          media: stopMedia
-        });
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Error in getTourPackageMediaUrls:', error);
-      throw error;
-    }
-  }
-
-  // Get signed URLs for specific media files by IDs
-  async getMediaUrls(mediaIds) {
-    try {
-      const ids = mediaIds.map(id => parseInt(id));
-      
-      const mediaRecords = await prisma.media.findMany({
-        where: {
-          id: { in: ids }
-        }
-      });
-
-      if (mediaRecords.length === 0) {
-        throw new Error('No media found with provided IDs');
-      }
-
-      const mediaWithUrls = await Promise.all(
-        mediaRecords.map(async (media) => {
-          const url = await this.getFileUrl(media.s3_key);
-          return {
-            id: media.id,
-            media_type: media.media_type,
-            url: url,
-            s3_key: media.s3_key,
-            format: media.format,
-            file_size: media.file_size,
-            duration_seconds: media.duration_seconds
-          };
-        })
-      );
-
-      return mediaWithUrls;
-    } catch (error) {
-      console.error('Error in getMediaUrls:', error);
-      throw error;
-    }
-  }
 }
 
