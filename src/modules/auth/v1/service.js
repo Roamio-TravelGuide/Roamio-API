@@ -1,5 +1,9 @@
-import { AuthRepository } from './repository.js';
-import { comparePasswords, generateToken } from '../../../utils/index.js';
+import { AuthRepository } from "./repository.js";
+import {
+  comparePasswords,
+  generateToken,
+  hashPassword,
+} from "../../../utils/index.js";
 
 class AuthService {
   constructor() {
@@ -8,18 +12,26 @@ class AuthService {
 
   async login(loginData) {
     const user = await this.authRepository.findUserByEmail(loginData.email);
-    
-    if (!user) throw new Error('User not found');
-    
-    const isPasswordValid = await comparePasswords(loginData.password, user.password_hash);
-    if (!isPasswordValid) throw new Error('Invalid credentials');
-    
+
+    if (!user) throw new Error("User not found");
+
+    // Check if user status is pending
+    if (user.status === "pending") {
+      throw new Error("Your account is pending approval. Please wait for admin approval or check your email for updates.");
+    }
+
+    const isPasswordValid = await comparePasswords(
+      loginData.password,
+      user.password_hash
+    );
+    if (!isPasswordValid) throw new Error("Invalid credentials");
+
     const token = generateToken({
       userId: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
     });
-    
+
     return {
       token,
       user: {
@@ -27,8 +39,47 @@ class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
-        profile_picture_url: user.profile_picture_url
-      }
+        profile_picture_url: user.profile_picture_url,
+      },
+    };
+  }
+
+  async signup(userData) {
+    const existingUser = await this.authRepository.findUserByEmail(
+      userData.email
+    );
+    if (existingUser) {
+      throw new Error("User already exists");
+    }
+    if(!userData.password){
+      throw new Error('Password is required');
+    }
+
+    const hashedPassword = await hashPassword(userData.password);
+    // Prepare the user data for creation
+    const userToCreate = {
+      ...userData,
+      password_hash: hashedPassword,
+    };
+
+    // Create the user with role-specific data
+    const user = await this.authRepository.createUser(userToCreate);
+
+    // Generate token for immediate login after signup
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        profile_picture_url: user.profile_picture_url,
+      },
     };
   }
 }
