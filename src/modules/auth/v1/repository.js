@@ -4,9 +4,9 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 class AuthRepository {
-    async findUserByEmail(email) {
-    return prisma.user.findUnique({
-      where: { email },
+  async findUserByEmail(email) {
+    return prisma.user.findUnique({ 
+      where: { email , status: 'active' },
       select: {
         id: true,
         email: true,

@@ -66,33 +66,21 @@ class TourPackageController {
     }
   }
 
-  // async createTourPackage(req, res) {
-  //   try {
-  //     const packageData = req.body;
-  //     const newPackage = await tourPackageService.createTourPackage(packageData);
-      
-  //     res.status(201).json({
-  //       success: true,
-  //       data: newPackage
-  //     });
-  //   } catch (error) {
-  //     console.error("Error creating tour package:", error);
-  //     const statusCode = error.statusCode || 500;
-  //     const message = error.message || "Failed to create tour package";
-      
-  //     res.status(statusCode).json({ 
-  //       success: false,
-  //       error: message,
-  //     });
-  //   }
-  // }
-
   async createTourPackage(req, res) {
     try {
       const { title, description, price, duration_minutes, guide_id, stops = [] } = req.body;
 
-      // Validate required fields
-      if (!title || !guide_id) {
+      const guide = await prisma.travelGuide.findUnique({
+        where: { 
+          user_id: parseInt(guide_id) 
+        },
+        select: { 
+          id: true 
+        }
+      });
+
+
+      if (!title || !guide.id) {
         return res.status(400).json({ error: 'Title and guide_id are required' });
       }
 
@@ -104,7 +92,7 @@ class TourPackageController {
             description: description || '',
             price: price || 0,
             duration_minutes: duration_minutes || 0,
-            guide_id: parseInt(guide_id),
+            guide_id: parseInt(guide.id),
             status: 'pending_approval'
           }
         });
@@ -241,30 +229,32 @@ class TourPackageController {
 
   async getTourPackagesByGuideId(req, res) {
     try {
-      const { guideId } = req.params;      
+      // console.log(req.params);
+      const { guideId } = req.params;
+      const { status, search, page = 1, limit = 10 } = req.query;
+      
       if (!guideId || isNaN(parseInt(guideId))) {
-        res.status(400).json({
+        return res.status(400).json({
           success: false,
           message: 'Invalid guide ID'
         });
-        return;
       }
 
-      const tourPackages = await tourPackageService.getTourPackagesByGuideId(parseInt(guideId));
+      const filters = {
+        status,
+        search,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      };
 
-      // console.log(tourPackages);
-      
-      if (!tourPackages || tourPackages.length === 0) {
-        res.status(404).json({
-          success: false,
-          message: 'No tour packages found for this guide'
-        });
-        return;
-      }
+      const result = await tourPackageService.getTourPackagesByGuideId(parseInt(guideId), filters);
 
       res.status(200).json({
         success: true,
-        data: tourPackages
+        data: result.packages,
+        total: result.total,
+        page: result.page,
+        limit: result.limit
       });
     } catch (error) {
       console.error('Error fetching tour packages by guide:', error);
@@ -273,7 +263,7 @@ class TourPackageController {
         message: 'Internal server error'
       });
     }
-  }
+  } 
 
   // async createTourStops(req, res) {
   //   try {
