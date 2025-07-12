@@ -15,4 +15,6 @@ router.get('/file-url', controller.getFileUrl);
 router.get('/tour-package/:packageId/media', controller.getTourPackageMedia);
 router.get('/media/urls', controller.getMediaUrls);
 
+router.delete('/temp-cover/:key', controller.deleteTempCover);
+
 export default router;

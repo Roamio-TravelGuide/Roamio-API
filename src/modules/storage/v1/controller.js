@@ -151,4 +151,19 @@ export class StorageController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  deleteTempCover = async(req,res) => {
+    try {
+      const { key } = req.params;
+      // console.log(key);
+      await this.storageService.deleteTempCover(key);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error deleting temp cover:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Failed to delete temporary cover' 
+      });
+    }
+  }
 }

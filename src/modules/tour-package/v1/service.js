@@ -147,15 +147,27 @@ class TourPackageService {
     return tourPackageRepository.getStatistics();
   }
 
-  async getTourPackagesByGuideId(guideId) {
+  async getTourPackagesByGuideId(guideId , filters = {}) {
     try {
-      if (!guideId || isNaN(guideId)) throw new Error('Invalid guide ID');
-      return await tourPackageRepository.findByGuideId(guideId);
+      if (!guideId || isNaN(guideId)) {
+        throw new Error('Invalid guide ID');
+      }
+
+      // console.log(guideId);
+
+      const result = await tourPackageRepository.findByGuideId(guideId, filters);
+
+      return {
+        packages: result.packages,
+        total: result.total,
+        page: filters.page || 1,
+        limit: filters.limit || 10
+      };
     } catch (error) {
       console.error('Error in getTourPackagesByGuideId service:', error);
       throw error;
     }
   }
-}
+};
 
 export default new TourPackageService();
