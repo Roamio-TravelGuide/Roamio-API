@@ -1,4 +1,4 @@
-import { StorageService } from "./service.js";
+import { StorageService } from './service.js';
 
 export class StorageController {
   constructor() {
@@ -6,154 +6,149 @@ export class StorageController {
   }
 
   // Temporary upload endpoint
-  tempCoverUpload = async (req, res) => {
+  tempCoverUpload = async (req, res) => {  
     try {
       // console.log(req.body.sessionId);
       if (!req.file || !req.body.sessionId) {
-        return res
-          .status(400)
-          .json({ error: "No file uploaded or sessionId error" });
+        return res.status(400).json({ error: 'No file uploaded or sessionId error' });
       }
-
+      
       const result = await this.storageService.tempCoverUpload(
-        req.file,
+        req.file, 
         req.body.type,
         req.body.sessionId
       );
-
+      
       res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
-  };
+  }
 
   finalizeUploads = async (req, res) => {
     try {
       console.log(req.body);
-      const { fileReferences, packageId, uploadedById } = req.body;
-
+      const { fileReferences, packageId , uploadedById} = req.body;
+      
       if (!fileReferences || !packageId) {
-        return res.status(400).json({
-          error: "fileReferences and packageId are required",
+        return res.status(400).json({ 
+          error: 'fileReferences and packageId are required' 
         });
       }
 
       const results = await this.storageService.finalizeUploads(
-        JSON.parse(fileReferences),
+        JSON.parse(fileReferences), 
         packageId,
         uploadedById
       );
 
       res.status(200).json({
         success: true,
-        data: results,
+        data: results
       });
+
     } catch (error) {
-      console.error("Finalization error:", error);
-      res.status(500).json({
-        error: error.message || "Failed to finalize uploads",
+      console.error('Finalization error:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to finalize uploads' 
       });
     }
-  };
+  }
 
   getFileUrl = async (req, res) => {
     try {
       const { s3Key } = req.query;
       if (!s3Key) {
-        return res.status(400).json({ error: "s3Key is required" });
+        return res.status(400).json({ error: 's3Key is required' });
       }
-
+      
       const url = await this.storageService.getFileUrl(s3Key);
       res.json({ url });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
-  };
+  }
 
   // Get all media URLs for a tour package (for moderators)
   getTourPackageMedia = async (req, res) => {
     try {
       const { packageId } = req.params;
-
+      
       if (!packageId || isNaN(parseInt(packageId))) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           success: false,
-          error: "Valid package ID is required",
+          error: 'Valid package ID is required' 
         });
       }
 
-      const mediaWithUrls = await this.storageService.getTourPackageMediaUrls(
-        packageId
-      );
-
+      const mediaWithUrls = await this.storageService.getTourPackageMediaUrls(packageId);
+      
       res.status(200).json({
         success: true,
-        data: mediaWithUrls,
+        data: mediaWithUrls
       });
     } catch (error) {
-      console.error("Error fetching tour package media:", error);
-      res.status(500).json({
+      console.error('Error fetching tour package media:', error);
+      res.status(500).json({ 
         success: false,
-        error: error.message,
+        error: error.message 
       });
     }
-  };
+  }
 
   // Get signed URLs for specific media files
   getMediaUrls = async (req, res) => {
     try {
       const { mediaIds } = req.query;
-
+      
       if (!mediaIds) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           success: false,
-          error: "Media IDs are required",
+          error: 'Media IDs are required' 
         });
       }
 
-      const ids = Array.isArray(mediaIds) ? mediaIds : mediaIds.split(",");
+      const ids = Array.isArray(mediaIds) ? mediaIds : mediaIds.split(',');
       const mediaWithUrls = await this.storageService.getMediaUrls(ids);
-
+      
       res.status(200).json({
         success: true,
-        data: mediaWithUrls,
+        data: mediaWithUrls
       });
     } catch (error) {
-      console.error("Error fetching media URLs:", error);
-      res.status(500).json({
+      console.error('Error fetching media URLs:', error);
+      res.status(500).json({ 
         success: false,
-        error: error.message,
+        error: error.message 
       });
     }
-  };
+  }
 
-  tempUploadMedia = async (req, res) => {
+  tempUploadMedia = async (req, res) => {  
     try {
       if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+        return res.status(400).json({ error: 'No file uploaded' });
       }
-
+      
       if (!req.body.sessionId || !req.body.stopIndex) {
-        return res
-          .status(400)
-          .json({ error: "sessionId and stopIndex are required" });
+        return res.status(400).json({ error: 'sessionId and stopIndex are required' });
       }
-
-      const type = req.body.type || "stop_image";
-
+      
+      const type = req.body.type || 'stop_image';
+      
       const result = await this.storageService.tempUploadMedia(
         req.file,
         type,
         req.body.sessionId,
         req.body.stopIndex
       );
-
+      
       // Generate URL for immediate use
       result.url = await this.storageService.getFileUrl(result.key);
-
+      
       res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
-  };
+  }
 }
