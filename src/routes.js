@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import authRoutes from './modules/auth/v1/route.js';
 import tourPackageRoutes from './modules/tour-package/v1/route.js';
+import userRoutes from './modules/users/v1/route.js';
+// import storageRoutes from './modules/storage/v1/route.js
 // import userRoutes from './modules/users/v1/route.js';
 import storageRoutes from './modules/storage/v1/route.js';
 
@@ -13,6 +15,8 @@ router.get('/', (req, res) => {
 
 router.use('/auth', authRoutes);
 router.use('/tour-packages', tourPackageRoutes);
+router.use('/users', userRoutes);
+// router.use('/storage', storageRoutes);
 // router.use('/users', userRoutes);
 router.use('/storage', storageRoutes);
 

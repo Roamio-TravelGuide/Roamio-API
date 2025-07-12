@@ -1,6 +1,7 @@
-import { UserService } from './service';
+// src/controllers/userController.js
+import { UserService } from "./service.js";
 
-class UserController {
+export class UserController {
     constructor() {
         this.userService = new UserService();
     }
@@ -83,5 +84,3 @@ class UserController {
         }
     }
 }
-
-module.exports = { UserController };
