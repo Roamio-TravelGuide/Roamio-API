@@ -139,12 +139,56 @@ class TourPackageRepository {
   }
 
   async create(data) {
-    return prisma.tourPackage.create({
-      data: {
-        ...data,
-        status: 'pending_approval'
+    if (!data.title || !data.guide_id) {
+      throw new Error('Title and guide_id are required');
+    }
+
+    const tourData = {
+      title: data.title,
+      description: data.description || '',
+      price: data.price || 0,
+      duration_minutes: data.duration_minutes || 0,
+      guide_id: data.guide_id,
+      status: 'pending_approval',
+      created_at: new Date(),
+      updated_at: new Date()
+    };
+
+    try {
+      const tourPackage = await prisma.tourPackage.create({
+        data: tourData,
+        include: {
+          guide: {
+            select: {
+              user: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      return {
+        success: true,
+        data: tourPackage,
+        message: 'Tour package created successfully'
+      };
+    } catch (error) {
+      console.error('Error creating tour package:', error);
+      
+      if (error.code === 'P2002') {
+        throw new Error('A tour with similar details already exists');
       }
-    });
+      
+      if (error.code === 'P2003') {
+        throw new Error('Invalid guide_id specified');
+      }
+      
+      throw new Error('Failed to create tour package');
+    }
   }
 
   async findByGuideId(userId) {
