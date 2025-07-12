@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -28,9 +28,9 @@ async function clearDatabase() {
   await prisma.tourStop.deleteMany();
   await prisma.tourPackage.deleteMany();
   await prisma.hiddenPlace.deleteMany();
+  await prisma.pOI.deleteMany();
   await prisma.media.deleteMany();
   await prisma.report.deleteMany();
-  await prisma.pOI.deleteMany();
   await prisma.travelGuide.deleteMany();
   await prisma.traveler.deleteMany();
   await prisma.location.deleteMany();
@@ -604,94 +604,130 @@ async function seedMedia(users) {
       // Images
       {
         url: 'https://images.pexels.com/photos/3408744/pexels-photo-3408744.jpeg',
+        s3_key: 'media/images/colombo_galle_face.jpg',
         media_type: 'image',
         uploaded_by_id: users.guide1.id,
         file_size: BigInt(2048576),
-        format: 'JPEG'
+        format: 'JPEG',
+        width: 1920,
+        height: 1080
       },
       {
         url: 'https://images.pexels.com/photos/2290753/pexels-photo-2290753.jpeg',
+        s3_key: 'media/images/kandy_temple.jpg',
         media_type: 'image',
         uploaded_by_id: users.guide2.id,
         file_size: BigInt(3145728),
-        format: 'JPEG'
+        format: 'JPEG',
+        width: 1920,
+        height: 1280
       },
       {
         url: 'https://images.pexels.com/photos/1450360/pexels-photo-1450360.jpeg',
+        s3_key: 'media/images/yala_wildlife.jpg',
         media_type: 'image',
         uploaded_by_id: users.guide3.id,
         file_size: BigInt(1572864),
-        format: 'JPEG'
+        format: 'JPEG',
+        width: 1280,
+        height: 853
       },
       {
         url: 'https://images.pexels.com/photos/1007426/pexels-photo-1007426.jpeg',
+        s3_key: 'media/images/sigiriya_rock.jpg',
         media_type: 'image',
         uploaded_by_id: users.guide4.id,
         file_size: BigInt(2621440),
-        format: 'JPEG'
+        format: 'JPEG',
+        width: 1920,
+        height: 1280
       },
       {
         url: 'https://images.pexels.com/photos/417074/pexels-photo-417074.jpeg',
+        s3_key: 'media/images/ella_rock.jpg',
         media_type: 'image',
         uploaded_by_id: users.guide5.id,
         file_size: BigInt(1835008),
-        format: 'JPEG'
+        format: 'JPEG',
+        width: 1280,
+        height: 853
       },
       {
         url: 'https://images.pexels.com/photos/2387793/pexels-photo-2387793.jpeg',
+        s3_key: 'media/images/tea_plantation.jpg',
         media_type: 'image',
         uploaded_by_id: users.guide6.id,
         file_size: BigInt(2097152),
-        format: 'JPEG'
+        format: 'JPEG',
+        width: 1920,
+        height: 1280
       },
       // Audio files
       {
         url: 'https://example.com/media/temple_audio.mp3',
+        s3_key: 'media/audio/temple_guide.mp3',
         media_type: 'audio',
         duration_seconds: 300,
         uploaded_by_id: users.guide1.id,
         file_size: BigInt(5242880),
-        format: 'MP3'
+        format: 'MP3',
+        bitrate: 128,
+        sample_rate: 44100
       },
       {
         url: 'https://example.com/media/nature_sounds.mp3',
+        s3_key: 'media/audio/nature_sounds.mp3',
         media_type: 'audio',
         duration_seconds: 450,
         uploaded_by_id: users.guide2.id,
         file_size: BigInt(7340032),
-        format: 'MP3'
+        format: 'MP3',
+        bitrate: 128,
+        sample_rate: 44100
       },
       {
         url: 'https://example.com/media/history_narration.mp3',
+        s3_key: 'media/audio/history_narration.mp3',
         media_type: 'audio',
         duration_seconds: 600,
         uploaded_by_id: users.guide4.id,
         file_size: BigInt(9437184),
-        format: 'MP3'
+        format: 'MP3',
+        bitrate: 128,
+        sample_rate: 44100
       },
       {
         url: 'https://example.com/media/cultural_music.mp3',
+        s3_key: 'media/audio/cultural_music.mp3',
         media_type: 'audio',
         duration_seconds: 360,
         uploaded_by_id: users.guide5.id,
         file_size: BigInt(6291456),
-        format: 'MP3'
+        format: 'MP3',
+        bitrate: 128,
+        sample_rate: 44100
       },
       {
         url: 'https://example.com/media/wildlife_guide.mp3',
+        s3_key: 'media/audio/wildlife_guide.mp3',
         media_type: 'audio',
         duration_seconds: 480,
         uploaded_by_id: users.guide3.id,
         file_size: BigInt(8388608),
-        format: 'MP3'
+        format: 'MP3',
+        bitrate: 128,
+        sample_rate: 44100
       },
       {
         url: 'https://example.com/media/tea_plantation_guide.mp3',
+        s3_key: 'media/audio/tea_plantation_guide.mp3',
         media_type: 'audio',
         duration_seconds: 420,
         uploaded_by_id: users.guide6.id,
         file_size: BigInt(7340032),
-        format: 'MP3'
+        format: 'MP3',
+        bitrate: 128,
+        sample_rate: 44100
       }
     ]
   });
@@ -699,7 +735,7 @@ async function seedMedia(users) {
   return await prisma.media.findMany();
 }
 
-async function seedTourPackages(users) {
+async function seedTourPackages(users, media) {
   console.log('🎒 Seeding 20 tour packages...');
   
   // Get guide IDs from the TravelGuide table (not User table)
@@ -716,7 +752,8 @@ async function seedTourPackages(users) {
       price: 5000.00,
       duration_minutes: 480,
       status: 'published',
-      created_at: new Date('2024-01-01T10:00:00Z')
+      created_at: new Date('2024-01-01T10:00:00Z'),
+      cover_image_id: media[0].id
     },
     {
       guide_id: guides[0].id,
@@ -725,7 +762,8 @@ async function seedTourPackages(users) {
       price: 7500.00,
       duration_minutes: 360,
       status: 'published',
-      created_at: new Date('2024-01-02T10:00:00Z')
+      created_at: new Date('2024-01-02T10:00:00Z'),
+      cover_image_id: media[1].id
     },
     {
       guide_id: guides[1].id,
@@ -734,7 +772,8 @@ async function seedTourPackages(users) {
       price: 12000.00,
       duration_minutes: 720,
       status: 'published',
-      created_at: new Date('2024-01-03T10:00:00Z')
+      created_at: new Date('2024-01-03T10:00:00Z'),
+      cover_image_id: media[3].id
     },
     {
       guide_id: guides[2].id,
@@ -743,7 +782,8 @@ async function seedTourPackages(users) {
       price: 9500.00,
       duration_minutes: 600,
       status: 'published',
-      created_at: new Date('2024-01-04T10:00:00Z')
+      created_at: new Date('2024-01-04T10:00:00Z'),
+      cover_image_id: media[2].id
     },
     {
       guide_id: guides[4].id,
@@ -761,7 +801,8 @@ async function seedTourPackages(users) {
       price: 8200.00,
       duration_minutes: 540,
       status: 'published',
-      created_at: new Date('2024-01-06T10:00:00Z')
+      created_at: new Date('2024-01-06T10:00:00Z'),
+      cover_image_id: media[5].id
     },
 
     // PENDING APPROVAL PACKAGES (10)
@@ -817,7 +858,8 @@ async function seedTourPackages(users) {
       price: 5500.00,
       duration_minutes: 420,
       status: 'pending_approval',
-      created_at: new Date('2024-01-20T10:00:00Z')
+      created_at: new Date('2024-01-20T10:00:00Z'),
+      cover_image_id: media[4].id
     },
     {
       guide_id: guides[3].id,
@@ -1639,7 +1681,7 @@ async function main() {
     const users = await seedUsers();
     const locations = await seedLocations();
     const media = await seedMedia(users);
-    const packages = await seedTourPackages(users);
+    const packages = await seedTourPackages(users, media);
     await seedTourStops(packages, locations, media);
     await seedPayments(users, packages);
     await seedDownloads(users, packages);
@@ -1675,7 +1717,7 @@ async function main() {
     console.log('- 3 Downloads from completed tours');
     console.log('- 5 Reviews for published packages');
     console.log('- 3 Hidden places (2 approved, 1 pending)');
-    console.log('- 4 POIs (3 approved, 1 pending)');
+    console.log('- 4 POIs (3 approved, 1 pending_approval)');
     console.log('- 4 Reports (3 resolved, 1 open)');
     
     console.log('\n🔐 Test Login Credentials:');

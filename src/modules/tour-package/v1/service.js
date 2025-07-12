@@ -1,7 +1,12 @@
 import prisma from '../../../database/connection.js';
 import { tourPackageRepository } from './repository.js';
+import { StorageService } from '../../storage/v1/service.js';
 
 class TourPackageService {
+  constructor() {
+    this.storageService = new StorageService();
+  }
+
   async getTourPackages(filters = {}) {
     const { status, search, location, dateFrom, dateTo, page = 1, limit = 10 } = filters;
     const where = {};
@@ -44,10 +49,79 @@ class TourPackageService {
 
   async getTourPackageById(id) {
     try {
-      return await tourPackageRepository.findById(id);
+      const tourPackage = await tourPackageRepository.findById(id);
+      
+      if (!tourPackage) {
+        return null;
+      }
+
+      // Generate fresh signed URLs for all media
+      const tourWithMediaUrls = await this.enrichTourWithMediaUrls(tourPackage);
+      
+      return tourWithMediaUrls;
     } catch (error) {
       console.error('Error in fetching service:', error);
       throw error;
+    }
+  }
+
+  // Helper method to enrich tour data with fresh media URLs
+  async enrichTourWithMediaUrls(tourPackage) {
+    try {
+      // Generate URL for cover image if it exists
+      if (tourPackage.cover_image?.s3_key) {
+        try {
+          // Check if s3_key is valid
+          if (tourPackage.cover_image.s3_key === 'undefined' || tourPackage.cover_image.s3_key === '') {
+            console.warn(`Cover image ${tourPackage.cover_image.id} has invalid s3_key: "${tourPackage.cover_image.s3_key}"`);
+            // Keep existing URL (might be external URL from seed data)
+            tourPackage.cover_image_url = tourPackage.cover_image.url;
+          } else {
+            const coverImageUrl = await this.storageService.getFileUrl(tourPackage.cover_image.s3_key, 7200); // 2 hours
+            tourPackage.cover_image.url = coverImageUrl;
+            tourPackage.cover_image_url = coverImageUrl; // For backward compatibility
+          }
+        } catch (error) {
+          console.error(`Failed to generate cover image URL: ${error.message}`);
+          // Keep existing URL as fallback
+          tourPackage.cover_image_url = tourPackage.cover_image.url;
+        }
+      }
+
+      // Generate URLs for tour stop media
+      if (tourPackage.tour_stops) {
+        await Promise.all(
+          tourPackage.tour_stops.map(async (stop) => {
+            if (stop.media && stop.media.length > 0) {
+              await Promise.all(
+                stop.media.map(async (stopMedia) => {
+                  if (stopMedia.media?.s3_key) {
+                    try {
+                      // Check if s3_key is valid
+                      if (stopMedia.media.s3_key === 'undefined' || stopMedia.media.s3_key === '') {
+                        console.warn(`Media ${stopMedia.media.id} has invalid s3_key: "${stopMedia.media.s3_key}"`);
+                        // Keep existing URL (might be external URL from seed data)
+                        // No need to update as we'll keep the existing URL
+                      } else {
+                        const mediaUrl = await this.storageService.getFileUrl(stopMedia.media.s3_key, 7200); // 2 hours
+                        stopMedia.media.url = mediaUrl;
+                      }
+                    } catch (error) {
+                      console.error(`Failed to generate media URL for ${stopMedia.media.id}: ${error.message}`);
+                      // Keep existing URL as fallback
+                    }
+                  }
+                })
+              );
+            }
+          })
+        );
+      }
+
+      return tourPackage;
+    } catch (error) {
+      console.error('Error enriching tour with media URLs:', error);
+      return tourPackage; // Return original data if URL generation fails
     }
   }
 

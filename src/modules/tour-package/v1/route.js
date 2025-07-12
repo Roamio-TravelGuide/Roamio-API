@@ -10,4 +10,6 @@ router.get('/guide/:guideId', tourPackageController.getTourPackagesByGuideId);
 router.post('/createTour', tourPackageController.createTourPackage);
 router.patch('/:id/status', tourPackageController.updateTourPackageStatus);
 
+router.post('/tour-stops/bulk',tourPackageController.createTourStops)
+router.post('/locations', tourPackageController.createLocation)
 export default router;

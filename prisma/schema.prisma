@@ -219,7 +219,7 @@ model TourStop {
 model Media {
   id               Int         @id @default(autoincrement())
   url              String      @unique
-  s3_key           String      @unique
+  s3_key           String      @unique @default("")  
   duration_seconds Int?
   media_type       MediaType
   uploader         User        @relation("uploaded_media", fields: [uploaded_by_id], references: [id])
