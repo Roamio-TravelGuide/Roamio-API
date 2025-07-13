@@ -342,4 +342,68 @@ export class StorageService {
       throw error;
     }
   }
+
+  // Add to StorageService class in service.js
+async uploadVendorLogo(userId, file) {
+  if (!file.mimetype.startsWith('image/')) {
+    throw new Error('Only image files are allowed for logos');
+  }
+
+  const { key, url } = await this.repository.uploadVendorMedia({
+    file,
+    userId,
+    mediaType: 'LOGO'
+  });
+
+  // Create media record
+  await prisma.media.create({
+    data: {
+      url,
+      s3_key: key,
+      media_type: 'VENDOR_LOGO',
+      uploaded_by_id: userId,
+      file_size: file.size,
+      format: file.mimetype
+    }
+  });
+
+  return { logoUrl: url };
+}
+
+async uploadVendorGalleryImage(userId, file) {
+  if (!file.mimetype.startsWith('image/')) {
+    throw new Error('Only image files are allowed for gallery');
+  }
+
+  const { key, url } = await this.repository.uploadVendorMedia({
+    file,
+    userId,
+    mediaType: 'GALLERY'
+  });
+
+  // Create media record
+  await prisma.media.create({
+    data: {
+      url,
+      s3_key: key,
+      media_type: 'VENDOR_GALLERY',
+      uploaded_by_id: userId,
+      file_size: file.size,
+      format: file.mimetype
+    }
+  });
+
+  return { imageUrl: url, imageId: key };
+}
+
+async getVendorMediaUrls(userId) {
+  const mediaRecords = await this.repository.getVendorMedia(userId);
+  
+  return Promise.all(
+    mediaRecords.map(async (media) => ({
+      ...media,
+      url: await this.getFileUrl(media.s3_key)
+    }))
+  );
+}
 }

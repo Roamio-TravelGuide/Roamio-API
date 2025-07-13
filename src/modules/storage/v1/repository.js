@@ -126,4 +126,34 @@ export class StorageRepository {
   async disconnect() {
     await prisma.$disconnect();
   }
+
+  // Add to StorageRepository class in repository.js
+async uploadVendorMedia({ file, userId, mediaType }) {
+  const key = `vendors/${userId}/${mediaType}/${Date.now()}-${file.originalname}`;
+  
+  await this.uploadFile({
+    file,
+    key,
+    contentType: file.mimetype
+  });
+
+  return {
+    key,
+    url: await this.getFileUrl(key),
+    mediaType,
+    format: file.mimetype,
+    fileSize: file.size
+  };
+}
+
+async getVendorMedia(userId) {
+  // This would require S3 listObjects implementation or DB query
+  // Here's a DB-based approach:
+  return await prisma.media.findMany({
+    where: {
+      uploaded_by_id: userId,
+      media_type: 'VENDOR_MEDIA'
+    }
+  });
+}
 }
