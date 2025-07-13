@@ -315,10 +315,30 @@ export class StorageService {
           };
         })
       );
-
       return mediaWithUrls;
     } catch (error) {
       console.error("Error in getMediaUrls:", error);
+      throw error;
+    }
+  }
+
+  async deleteTempCover(key){
+    try {
+      // console.log(key);
+      const exists = await this.repository.checkFileExists(key);
+      if (!exists) {
+        throw new Error('File not found');
+      }
+      
+      await this.repository.deleteFile(key);
+      
+      // You might also want to clean up any database records here
+      // For example:
+      // await this.tempUploadRepository.deleteByKey(key);
+      
+      return true;
+    } catch (error) {
+      console.error('StorageService.deleteTempCover error:', error);
       throw error;
     }
   }

@@ -191,56 +191,80 @@ class TourPackageRepository {
     }
   }
 
-  async findByGuideId(userId) {
+  async findByGuideId(guideId , filters = {}) {
     try {
       const guide = await prisma.travelGuide.findUnique({
-        where: { user_id: parseInt(userId) },
-        select: { id: true }
-      });
-
-      if (!guide) return [];
-
-      return await prisma.tourPackage.findMany({
         where: { 
-          guide_id: guide.id,
-          status: 'published'
+          user_id: parseInt(guideId) 
         },
-        include: {
-          guide: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                  profile_picture_url: true
-                }
-              }
-            }
-          },
-          cover_image: {
-            select: {
-              url: true
-            }
-          },
-          tour_stops: {
-            take: 1,
-            include: {
-              location: {
-                select: {
-                  city: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: { created_at: 'desc' }
+        select: { 
+          id: true 
+        }
       });
+
+      const where = {
+        guide_id: guide.id
+      };
+
+      if (!guide) {
+        return { packages: [], total: 0 };
+      }
+
+      if (filters.status && filters.status !== 'all') {
+        where.status = filters.status;
+      }
       
+      if (filters.search) {
+        where.OR = [
+          { title: { contains: filters.search, mode: 'insensitive' } },
+          { description: { contains: filters.search, mode: 'insensitive' } }
+        ];
+      }
+
+      const [packages, total] = await Promise.all([
+        prisma.tourPackage.findMany({
+          where,
+          include: {
+            guide: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                    profile_picture_url: true
+                  }
+                }
+              }
+            },
+            cover_image: {
+              select: {
+                url: true
+              }
+            },
+            tour_stops: {
+              include: {
+                location: {
+                  select: {
+                    city: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { created_at: 'desc' },
+          skip: (filters.page - 1) * filters.limit,
+          take: filters.limit
+        }),
+        prisma.tourPackage.count({ where })
+      ]);
+
+      return { packages, total };
     } catch (error) {
-      console.error('findByGuideId error:', error.message);
+      console.error('findByGuideId repository error:', error.message);
       throw error;
     }
   }
-}
+};
+
 
 // Export the repository instance
 const tourPackageRepository = new TourPackageRepository();
