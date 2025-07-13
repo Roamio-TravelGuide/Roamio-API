@@ -98,40 +98,6 @@ enum ActivityType {
   other
 }
 
-enum SupportCategory {
-  safety
-  harassment
-  workplace
-  payment
-  equipment
-  management
-  customer
-  scheduling
-  training
-  technical
-  account
-  billing
-  feature_request
-  bug_report
-  other
-}
-
-enum SupportStatus {
-  new
-  open
-  in_progress
-  resolved
-  closed
-  rejected
-}
-
-enum SupportUrgency {
-  low
-  medium
-  high
-  critical
-}
-
 model User {
   id                  Int        @id @default(autoincrement())
   role                UserRole   @default(traveler)
@@ -146,17 +112,15 @@ model User {
   bio                 String?
 
   // Relations
-  guides             TravelGuide[]
-  travelers          Traveler[]
-  reports_reported   Report[]      @relation("reported_reports")
-  payments           Payment[]
-  reviews_received   Review[]      @relation("user_reviews")
-  reports_against_me Report[]      @relation("reported_users")
-  uploaded_media     Media[]       @relation("uploaded_media")
-  vendor_pois        POI[]         @relation("vendor_pois")
-  vendor_profile     Vendor?       @relation("vendor_profile")
-
-  // Support System Relations
+  guides               TravelGuide[]
+  travelers            Traveler[]
+  reports_reported     Report[]       @relation("reported_reports")
+  payments             Payment[]
+  reviews_received     Review[]       @relation("user_reviews")
+  reports_against_me   Report[]       @relation("reported_users")
+  uploaded_media       Media[]        @relation("uploaded_media")
+  vendor_pois          POI[]          @relation("vendor_pois")
+  vendor_profile       Vendor?        @relation("vendor_profile")
 
   @@map("user")
 }
@@ -205,8 +169,6 @@ model TravelGuide {
 
   // Relations
   tour_packages TourPackage[]
-  support_tickets SupportTicket[] @relation("guide_support_tickets")
-
 
   @@map("travel_guide")
 }
@@ -273,9 +235,10 @@ model Media {
 
   tour_stop_media TourStopMedia[]
   hidden_places   HiddenPlace[]
-  tour_packages   TourPackage[]   @relation("cover_images")
-  vendor_covers   Vendor[]        @relation("vendor_cover_images")
-  vendor_logos    Vendor[]        @relation("vendor_logos")
+  tour_packages   TourPackage[]       @relation("cover_images")
+  vendor_covers   Vendor[]            @relation("vendor_cover_images")
+  vendor_logos    Vendor[]            @relation("vendor_logos")
+
 
   @@map("media")
 }
@@ -394,56 +357,41 @@ model Vendor {
   id      Int  @id @default(autoincrement())
   user    User @relation("vendor_profile", fields: [user_id], references: [id])
   user_id Int  @unique
+
+  // Business Profile Information
   business_name        String
   business_type        BusinessType @default(other)
   business_description String?
   business_website     String?
-  tagline              String? 
+  tagline              String? // Business tagline/slogan
+
+  // Visual Assets & Branding
   cover_image    Media? @relation("vendor_cover_images", fields: [cover_image_id], references: [id])
   cover_image_id Int?
   logo           Media? @relation("vendor_logos", fields: [logo_id], references: [id])
   logo_id        Int?
-  business_license String // Business license number 
-  social_media_links Json? 
+
+  business_license String // Business license number
+
+  // Contact & Social Media
+  social_media_links Json? // {"facebook": "url", "instagram": "url", "twitter": "url", etc.}
+
+
+
+  // Status & Verification
   verification_status POIStatus @default(pending_approval)
   rejection_reason    String?
-  is_active           Boolean   @default(true)
+  is_active           Boolean                  @default(true)
+
+  // Ratings & Reviews (Aggregated from all POIs)
   average_rating Float? @default(0)
-  support_tickets SupportTicket[] @relation("vendor_support_tickets")
-  last_updated DateTime @updatedAt
-  created_at   DateTime @default(now())
+  
+  // Activity & Timestamps
+  last_updated DateTime  @updatedAt
+  created_at   DateTime  @default(now())
+
 
   @@map("vendor")
-}
-
-
-
-model SupportTicket {
-  id           Int          @id @default(autoincrement())
-  ticket_id    String       @unique @default(cuid()) 
-  user_type    UserRole   
-  travel_guide TravelGuide? @relation("guide_support_tickets", fields: [travel_guide_id], references: [id])
-  travel_guide_id Int?
-  vendor       Vendor?      @relation("vendor_support_tickets", fields: [vendor_id], references: [id])
-  vendor_id    Int?
-  category     SupportCategory
-  subject      String
-  description  String
-  urgency      SupportUrgency @default(medium)
-  status       ReportStatus @default(open)
-  resolution   String?       
-  resolved_at  DateTime?
-  closed_at    DateTime?
-
-  created_at   DateTime      @default(now())
-  updated_at   DateTime      @updatedAt
-
-  @@index([travel_guide_id])
-  @@index([vendor_id])
-  @@index([status])
-  @@index([category])
-  @@index([created_at])
-  @@map("support_ticket")
 }
 
 
