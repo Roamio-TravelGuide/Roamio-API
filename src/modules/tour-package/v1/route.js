@@ -13,4 +13,6 @@ router.patch('/:id/status', tourPackageController.updateTourPackageStatus);
 router.post('/tour-stops/bulk',tourPackageController.createTourStops)
 router.post('/locations', tourPackageController.createLocation)
 
+// router.get('/:id', tourPackageController.updateTourPackage);
+
 export default router;
