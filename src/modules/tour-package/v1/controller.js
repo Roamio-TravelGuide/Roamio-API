@@ -36,6 +36,40 @@ class TourPackageController {
       const { id } = req.params;
       
       if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid tour package ID'
+        });
+      }
+
+      const tourPackage = await tourPackageService.getTourPackageById(parseInt(id));
+
+      if (!tourPackage) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tour package not found'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: tourPackage
+      });
+      
+    } catch (error) {
+      console.error('Error fetching tour package:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async getTourPackageById(req, res) {
+    try {
+      const { id } = req.params;
+      
+      if (!id || isNaN(parseInt(id))) {
         res.status(400).json({
           success: false,
           message: 'Invalid tour package ID'
@@ -265,35 +299,6 @@ class TourPackageController {
     }
   } 
 
-  // async createTourStops(req, res) {
-  //   try {
-  //     const { package_id, stops } = req.body;
-
-  //     if (!package_id || !stops?.length) {
-  //       return res.status(400).json({ error: 'Package ID and stops are required' });
-  //     }
-
-  //     const createdStops = await prisma.$transaction(
-  //       stops.map(stop => 
-  //         prisma.tourStop.create({
-  //           data: {
-  //             package_id: parseInt(package_id),
-  //             sequence_no: stop.sequence_no,
-  //             stop_name: stop.stop_name,
-  //             description: stop.description || '',
-  //             location_id: stop.location_id || null
-  //           }
-  //         })
-  //       )
-  //     );
-
-  //     res.status(201).json(createdStops);
-  //   } catch (error) {
-  //     console.error('Error creating tour stops:', error);
-  //     res.status(500).json({ error: error.message });
-  //   }
-  // }
-
   async createLocation(req, res) {
     try {
       const { longitude, latitude, address, city, province, district, postal_code } = req.body;
@@ -373,9 +378,7 @@ class TourPackageController {
       console.error('Error creating tour stops:', error);
       res.status(500).json({ error: error.message });
     }
-  }
-
-  
+  }  
 }
 
 export default new TourPackageController();

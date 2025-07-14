@@ -12,7 +12,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export class StorageRepository {
-  async uploadFile({ file, key, contentType }) {
+  async uploadFile({ file, key, contentType, onUploadProgress }) {
     try {
       const command = new PutObjectCommand({
         Bucket: bucketName,
@@ -20,13 +20,38 @@ export class StorageRepository {
         Body: file.buffer,
         ContentType: contentType,
       });
-      await s3Client.send(command);
+
+      const abortController = new AbortController();
+      const timeout = setTimeout(() => abortController.abort(), 30000);
+
+      const response = await s3Client.send(command, { 
+        abortSignal: abortController.signal 
+      }).finally(() => clearTimeout(timeout));
+
+      if (onUploadProgress) {
+        onUploadProgress({ loaded: file.buffer.length, total: file.buffer.length });
+      }
+
       return { key };
     } catch (error) {
       console.error('Upload error:', error);
-      throw new Error('Failed to upload file');
+      
+      if (error.name !== 'AbortError') {
+        try {
+          await s3Client.send(new DeleteObjectCommand({
+            Bucket: bucketName,
+            Key: key
+          }));
+        } catch (cleanupError) {
+          console.error('Cleanup failed:', cleanupError);
+        }
+      }
+
+      throw new Error(error.name === 'AbortError' 
+        ? 'Upload timed out' 
+        : 'Failed to upload file');
     }
-  }
+    }
 
   async moveFile(sourceKey, destinationKey) {
     try {
