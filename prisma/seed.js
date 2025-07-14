@@ -27,6 +27,7 @@ async function clearDatabase() {
   await prisma.payment.deleteMany();
   await prisma.tourStop.deleteMany();
   await prisma.tourPackage.deleteMany();
+  await prisma.supportTicket.deleteMany();
   await prisma.hiddenPlace.deleteMany();
   await prisma.pOI.deleteMany();
   await prisma.media.deleteMany();
