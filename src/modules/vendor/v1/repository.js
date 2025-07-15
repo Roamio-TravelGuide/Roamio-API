@@ -1,44 +1,85 @@
 import { PrismaClient } from '@prisma/client';
 
 export class VendorRepository {
-    constructor() {
-        this.prisma = new PrismaClient();
-    }
+  constructor() {
+    this.prisma = new PrismaClient();
+  }
 
-    async getVendorByUserId(userId) {
-        return this.prisma.vendor.findUnique({
-            where: { user_id: userId },
-            include: {
-                user: {
-                    select: {
-                        email: true,
-                        phone_no: true,
-                        name: true
-                    }
-                },
-                logo: true,
-                cover_image: true
-            }
-        });
-    }
+  async getVendorProfile(vendorId) {
+  try {
+    return await this.prisma.vendor.findUnique({
+      where: { user_id: parseInt(vendorId) },
+      include: {
+        user: {
+          select: {
+            email: true,
+            phone_no: true,
+            address: true
+          }
+        },
+        logo: {
+          select: {
+            url: true
+          }
+        },
+        cover_image: {
+          select: {
+            url: true
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Repository Error:', error);
+    throw new Error('DATABASE_ERROR');
+  }
+}
 
-    async updateVendorProfile(userId, data) {
-        return this.prisma.vendor.update({
-            where: { user_id: userId },
-            data
-        });
-    }
+  async updateVendorProfile(vendorId, updateData) {
+    return this.prisma.vendor.update({
+      where: { user_id: vendorId },
+      data: {
+        business_name: updateData.business_name,
+        business_description: updateData.business_description,
+        social_media_links: updateData.social_media_links,
+        last_updated: new Date()
+      },
+      include: {
+        user: true,
+        logo: true,
+        cover_image: true
+      }
+    });
+  }
 
-    async updateUserProfile(userId, data) {
-        return this.prisma.user.update({
-            where: { id: userId },
-            data
-        });
-    }
+  async updateUserInfo(vendorId, updateData) {
+    return this.prisma.user.update({
+      where: { id: vendorId },
+      data: {
+        email: updateData.email,
+        phone_no: updateData.phone,
+        last_updated: new Date()
+      }
+    });
+  }
 
-    async createMedia(data) {
-        return this.prisma.media.create({
-            data
-        });
-    }
+  async updateVendorLogo(vendorId, mediaId) {
+    return this.prisma.vendor.update({
+      where: { user_id: vendorId },
+      data: {
+        logo_id: mediaId,
+        last_updated: new Date()
+      }
+    });
+  }
+
+  async updateVendorCover(vendorId, mediaId) {
+    return this.prisma.vendor.update({
+      where: { user_id: vendorId },
+      data: {
+        cover_image_id: mediaId,
+        last_updated: new Date()
+      }
+    });
+  }
 }

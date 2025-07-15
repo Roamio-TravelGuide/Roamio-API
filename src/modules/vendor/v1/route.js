@@ -1,26 +1,40 @@
-import express from 'express';
+import { Router } from 'express';
+import multer from 'multer';
 import { VendorController } from './controller.js';
-import { validateUpdateVendorProfile } from './validate.js';
+import authenticate from '../../../middleware/auth.js';
+import { validateRequest } from '../../../middleware/validation.js';
+import { vendorProfileValidationRules } from './validate.js';
 
-const router = express.Router();
+const router = Router();
+const upload = multer();
 const vendorController = new VendorController();
 
 // Get vendor profile
-router.get('/', vendorController.getVendorProfile.bind(vendorController));
+router.get('/', authenticate, (req, res) => vendorController.getVendorProfile(req, res));
 
 // Update vendor profile
-router.put('/', validateUpdateVendorProfile, vendorController.updateVendorProfile.bind(vendorController));
-
-// Upload logo (using controller's upload handler)
-router.post('/logo', 
-  vendorController.uploadLogo,
-  vendorController.handleLogoUpload.bind(vendorController)
+router.put(
+  '/', 
+  authenticate, 
+  vendorProfileValidationRules,
+  validateRequest,
+  (req, res) => vendorController.updateVendorProfile(req, res)
 );
 
-// Upload cover image
-router.post('/cover', 
-  vendorController.uploadCover,
-  vendorController.handleCoverUpload.bind(vendorController)
+// Upload vendor logo
+router.post(
+  '/logo', 
+  authenticate, 
+  upload.single('logo'),
+  (req, res) => vendorController.uploadVendorLogo(req, res)
+);
+
+// Upload vendor cover photo
+router.post(
+  '/cover', 
+  authenticate, 
+  upload.single('cover'),
+  (req, res) => vendorController.uploadVendorCover(req, res)
 );
 
 export default router;

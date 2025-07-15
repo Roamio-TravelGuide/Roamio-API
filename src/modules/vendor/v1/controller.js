@@ -1,126 +1,128 @@
 import { VendorService } from './service.js';
-import multer from 'multer';
-import { v4 as uuidv4 } from 'uuid';
-
-// Configure multer directly in the controller
-const uploadConfig = multer({
-  storage: multer.memoryStorage(), // Store files in memory for processing
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-    files: 1 // Single file per upload
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'), false);
-    }
-  }
-});
 
 export class VendorController {
-    constructor() {
-        this.vendorService = new VendorService();
+  constructor() {
+    this.vendorService = new VendorService();
+  }
+
+  async getVendorProfile(req, res) {
+  try {
+    const vendorId = req.user.id;
+    
+    if (!vendorId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is missing'
+      });
     }
 
-    // Handle logo upload
-    uploadLogo = uploadConfig.single('logo');
+    const profile = await this.vendorService.getVendorProfile(vendorId);
+    
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found. Please complete your profile setup.'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: profile
+    });
+  } catch (error) {
+    console.error('Vendor Profile Error:', {
+      userId: req.user?.id,
+      error: error.message,
+      stack: error.stack
+    });
+    
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while fetching vendor profile',
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack
+      } : undefined
+    });
+  }
+}
+  async updateVendorProfile(req, res) {
+    try {
+      const vendorId = req.user.id;
+      const updateData = req.body;
 
-    // Handle cover upload
-    uploadCover = uploadConfig.single('cover');
+      const updatedProfile = await this.vendorService.updateVendorProfile(vendorId, updateData);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: updatedProfile
+      });
+    } catch (error) {
+      console.error('Error updating vendor profile:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update profile',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
 
-    async getVendorProfile(req, res) {
-        try {
-            const userId = req.user.id;
-            const vendorProfile = await this.vendorService.getVendorProfile(userId);
-            
-            res.status(200).json({
-                success: true,
-                data: vendorProfile
-            });
-        } catch (error) {
-            console.error('Error fetching vendor profile:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to fetch vendor profile',
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+  async uploadVendorLogo(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No file uploaded'
+        });
+      }
+
+      const vendorId = req.user.id;
+      const result = await this.vendorService.uploadVendorLogo(vendorId, req.file);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Logo uploaded successfully',
+        data: {
+          logoUrl: result.url
         }
+      });
+    } catch (error) {
+      console.error('Error uploading vendor logo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to upload logo',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
+  }
 
-    async updateVendorProfile(req, res) {
-        try {
-            const userId = req.user.id;
-            const updateData = req.body;
-            
-            const updatedProfile = await this.vendorService.updateVendorProfile(userId, updateData);
-            
-            res.status(200).json({
-                success: true,
-                message: 'Profile updated successfully',
-                data: updatedProfile
-            });
-        } catch (error) {
-            console.error('Error updating vendor profile:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Failed to update vendor profile',
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+  async uploadVendorCover(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No file uploaded'
+        });
+      }
+
+      const vendorId = req.user.id;
+      const result = await this.vendorService.uploadVendorCover(vendorId, req.file);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Cover image uploaded successfully',
+        data: {
+          coverUrl: result.url
         }
+      });
+    } catch (error) {
+      console.error('Error uploading vendor cover:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to upload cover image',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
-
-    async handleLogoUpload(req, res) {
-        try {
-            if (!req.file) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'No file uploaded'
-                });
-            }
-
-            const userId = req.user.id;
-            const logoUrl = await this.vendorService.uploadLogo(userId, req.file);
-            
-            res.status(200).json({
-                success: true,
-                message: 'Logo uploaded successfully',
-                data: { logoUrl }
-            });
-        } catch (error) {
-            console.error('Error uploading logo:', error);
-            res.status(500).json({
-                success: false,
-                message: error.message || 'Failed to upload logo',
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
-        }
-    }
-
-    async handleCoverUpload(req, res) {
-        try {
-            if (!req.file) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'No file uploaded'
-                });
-            }
-
-            const userId = req.user.id;
-            const coverUrl = await this.vendorService.uploadCoverImage(userId, req.file);
-            
-            res.status(200).json({
-                success: true,
-                message: 'Cover image uploaded successfully',
-                data: { coverUrl }
-            });
-        } catch (error) {
-            console.error('Error uploading cover image:', error);
-            res.status(500).json({
-                success: false,
-                message: error.message || 'Failed to upload cover image',
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
-        }
-    }
+  }
 }

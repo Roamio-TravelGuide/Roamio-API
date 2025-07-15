@@ -1,68 +1,102 @@
 import { VendorRepository } from './repository.js';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { StorageService } from '../../storage/v1/service.js';
 
 export class VendorService {
-    constructor() {
-        this.vendorRepository = new VendorRepository();
-        this.s3 = new S3Client({ region: process.env.AWS_REGION });
+  constructor() {
+    this.vendorRepository = new VendorRepository();
+    this.storageService = new StorageService();
+  }
+
+  async getVendorProfile(vendorId) {
+  try {
+    const vendor = await this.vendorRepository.getVendorProfile(vendorId);
+    
+    if (!vendor) {
+      throw new Error('VENDOR_NOT_FOUND');
     }
 
-    // ... (keep existing getVendorProfile and updateVendorProfile methods)
+    // Safely handle missing relations
+    return {
+      businessName: vendor.business_name || '',
+      description: vendor.business_description || '',
+      email: vendor.user?.email || '',
+      phone: vendor.user?.phone_no || '',
+      address: vendor.user?.address || '',
+      socialMedia: vendor.social_media_links || {
+        instagram: '',
+        facebook: '',
+        website: ''
+      },
+      logoUrl: vendor.logo?.url || null,
+      coverPhotoUrl: vendor.cover_image?.url || null
+    };
+  } catch (error) {
+    console.error('VendorService Error:', error);
+    if (error.message === 'VENDOR_NOT_FOUND') {
+      error.statusCode = 404;
+    }
+    throw error;
+  }
+}
 
-    async uploadLogo(userId, file) {
-        const fileExt = file.originalname.split('.').pop();
-        const key = `vendor-logos/${userId}/${uuidv4()}.${fileExt}`;
-        
-        await this.s3.send(new PutObjectCommand({
-            Bucket: process.env.S3_BUCKET,
-            Key: key,
-            Body: file.buffer,
-            ContentType: file.mimetype,
-            ACL: 'public-read'
-        }));
+  async updateVendorProfile(vendorId, updateData) {
+    const updatedVendor = await this.vendorRepository.updateVendorProfile(
+      vendorId,
+      {
+        business_name: updateData.businessName,
+        business_description: updateData.description,
+        social_media_links: updateData.socialMedia
+      }
+    );
 
-        const logoUrl = `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${key}`;
-        const media = await this.createMediaRecord(userId, logoUrl, key, file);
-        
-        await this.vendorRepository.updateVendorProfile(userId, {
-            logo_id: media.id
-        });
-
-        return logoUrl;
+    // Also update user email and phone if changed
+    if (updateData.email || updateData.phone) {
+      await this.vendorRepository.updateUserInfo(vendorId, {
+        email: updateData.email,
+        phone_no: updateData.phone
+      });
     }
 
-    async uploadCoverImage(userId, file) {
-        const fileExt = file.originalname.split('.').pop();
-        const key = `vendor-covers/${userId}/${uuidv4()}.${fileExt}`;
-        
-        await this.s3.send(new PutObjectCommand({
-            Bucket: process.env.S3_BUCKET,
-            Key: key,
-            Body: file.buffer,
-            ContentType: file.mimetype,
-            ACL: 'public-read'
-        }));
+    return this.getVendorProfile(vendorId); // Return transformed data
+  }
 
-        const coverUrl = `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${key}`;
-        const media = await this.createMediaRecord(userId, coverUrl, key, file);
-        
-        await this.vendorRepository.updateVendorProfile(userId, {
-            cover_image_id: media.id
-        });
-
-        return coverUrl;
+  async uploadVendorLogo(vendorId, file) {
+    // Validate file type and size
+    if (!file.mimetype.startsWith('image/')) {
+      throw new Error('Only image files are allowed for logos');
+    }
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      throw new Error('Logo file size must be less than 5MB');
     }
 
-    async createMediaRecord(userId, url, s3Key, file) {
-        return this.vendorRepository.createMedia({
-            url,
-            s3_key: s3Key,
-            media_type: 'image',
-            uploaded_by_id: userId,
-            file_size: file.size,
-            format: file.mimetype.split('/')[1],
-            width: 0, // Can extract from image if needed
-            height: 0
-        });
+    // Upload to storage
+    const uploadResult = await this.storageService.uploadVendorLogo(vendorId, file);
+    
+    // Update vendor record with new logo
+    await this.vendorRepository.updateVendorLogo(vendorId, uploadResult.mediaId);
+
+    return {
+      url: uploadResult.url
+    };
+  }
+
+  async uploadVendorCover(vendorId, file) {
+    // Validate file type and size
+    if (!file.mimetype.startsWith('image/')) {
+      throw new Error('Only image files are allowed for cover photos');
     }
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      throw new Error('Cover photo size must be less than 10MB');
+    }
+
+    // Upload to storage
+    const uploadResult = await this.storageService.uploadVendorCover(vendorId, file);
+    
+    // Update vendor record with new cover
+    await this.vendorRepository.updateVendorCover(vendorId, uploadResult.mediaId);
+
+    return {
+      url: uploadResult.url
+    };
+  }
 }

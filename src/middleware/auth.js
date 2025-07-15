@@ -11,7 +11,7 @@ const authenticate = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Add user to request object
-    req.user = { id: decoded.id };
+    req.user = { id: decoded.userId };
     next();
   } catch (err) {
     return res.status(401).json({ 
@@ -21,4 +21,4 @@ const authenticate = (req, res, next) => {
   }
 };
 
-export default authenticate
+export default authenticate;
