@@ -16,7 +16,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  methods: ['PATCH','DELETE']
+  methods: ['PATCH','DELETE','PUT']
 }));
 app.use(express.json());
 

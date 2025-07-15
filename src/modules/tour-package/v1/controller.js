@@ -379,6 +379,43 @@ class TourPackageController {
       res.status(500).json({ error: error.message });
     }
   }  
+
+    // In TourPackageController class
+  async updateTourPackage(req, res) {
+    try {
+      const { id } = req.params;
+      // console.log(req.params);
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid tour package ID'
+        });
+      }
+
+      const updatedPackage = await tourPackageService.updateTourPackage(
+        parseInt(id),
+        req.body
+      );
+
+      if (!updatedPackage) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tour package not found'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: updatedPackage
+      });
+    } catch (error) {
+      console.error('Error updating tour package:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
 }
 
 export default new TourPackageController();
