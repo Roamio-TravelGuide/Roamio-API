@@ -160,17 +160,22 @@ class TourPackageService {
     }
   }
 
-  async updateTourPackage(id) {
+
+  async updateTourPackage(id, updateData) {
     try {
-      const tourPackage = await tourPackageRepository.findById(id);
-      
-      if (!tourPackage) {
+      // Check if package exists
+      const existingPackage = await this.getTourPackageById(id);
+      if (!existingPackage) {
         return null;
       }
 
-
+      // Update the package using repository
+      const updatedPackage = await tourPackageRepository.updateTourPackage(id, updateData);
+      
+      // Enrich with fresh media URLs if needed
+      return await this.enrichTourWithMediaUrls(updatedPackage);
     } catch (error) {
-      console.error('Error in fetching service:', error);
+      console.error('Error updating tour package:', error);
       throw error;
     }
   }
