@@ -263,6 +263,175 @@ class TourPackageRepository {
       throw error;
     }
   }
+
+  async updateTourPackage(id, data) {
+    try {
+      const { tour = {}, ...restData } = data;
+      const { tour_stops_attributes = [], ...tourData } = tour;
+
+      // 1. Verify package exists
+      const packageExists = await prisma.tourPackage.findUnique({
+        where: { id },
+        select: { id: true, tour_stops: { select: { id: true } } }
+      });
+
+      if (!packageExists) {
+        throw new Error(`TourPackage with ID ${id} not found`);
+      }
+
+      // 2. Validate and prepare media first
+      const mediaValidation = await this.validateMediaConnections(tour_stops_attributes);
+      if (mediaValidation.invalidMedia.length > 0) {
+        throw new Error(`Invalid media IDs: ${mediaValidation.invalidMedia.join(', ')}`);
+      }
+
+      // 3. Prepare update data
+      const updateData = {
+        ...restData,
+        ...tourData,
+        updated_at: new Date(),
+        tour_stops: {
+          update: [],
+          create: []
+        }
+      };
+
+      // 4. Process existing stops
+      const existingStopIds = packageExists.tour_stops.map(stop => stop.id);
+      for (const stop of tour_stops_attributes) {
+        if (stop.id && existingStopIds.includes(stop.id)) {
+          // Update existing stop
+          updateData.tour_stops.update.push({
+            where: { id: stop.id },
+            data: this.prepareStopUpdateData(stop)
+          });
+        } else {
+          // Create new stop
+          updateData.tour_stops.create.push(
+            this.prepareStopCreateData(stop)
+          );
+        }
+      }
+
+      // 5. Handle cover image
+      if (tourData.cover_image_id) {
+        updateData.cover_image = { connect: { id: tourData.cover_image_id } };
+      }
+
+      // 6. Execute transaction
+      return await prisma.$transaction(async (prisma) => {
+        return await prisma.tourPackage.update({
+          where: { id },
+          data: updateData,
+          include: {
+            guide: { include: { user: true } },
+            cover_image: true,
+            tour_stops: {
+              include: {
+                location: true,
+                media: { include: { media: true } }
+              },
+              orderBy: { sequence_no: 'asc' }
+            }
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error('Error updating tour package:', {
+        error: error.message,
+        stack: error.stack,
+        inputData: data
+      });
+      throw new Error(`Failed to update tour package: ${error.message}`);
+    }
+  }
+
+  async validateMediaConnections(stops) {
+    const mediaIds = [];
+    const invalidMedia = [];
+
+    // Collect all media IDs from stops
+    for (const stop of stops) {
+      if (stop.media_attributes) {
+        for (const media of stop.media_attributes) {
+          if (media.id) {
+            mediaIds.push(media.id);
+          } else {
+            invalidMedia.push('undefined');
+          }
+        }
+      }
+    }
+
+    // Check which media IDs actually exist
+    if (mediaIds.length > 0) {
+      const existingMedia = await prisma.media.findMany({
+        where: { id: { in: mediaIds } },
+        select: { id: true }
+      });
+
+      const existingIds = existingMedia.map(m => m.id);
+      for (const id of mediaIds) {
+        if (!existingIds.includes(id)) {
+          invalidMedia.push(id);
+        }
+      }
+    }
+
+    return { invalidMedia };
+  }
+
+  prepareStopUpdateData(stop) {
+    const data = {
+      sequence_no: stop.sequence_no,
+      stop_name: stop.stop_name,
+      description: stop.description,
+    };
+
+    // Handle location
+    if (stop.location_attributes) {
+      data.location = stop.location_attributes.id
+        ? { update: stop.location_attributes }
+        : { create: stop.location_attributes };
+    }
+
+    // Handle media
+    if (stop.media_attributes?.length > 0) {
+      data.media = {
+        deleteMany: {},
+        create: stop.media_attributes
+          .filter(media => media.id)
+          .map(media => ({ media: { connect: { id: media.id } }}))
+      };
+    }
+
+    return data;
+  }
+
+  prepareStopCreateData(stop) {
+    const data = {
+      sequence_no: stop.sequence_no,
+      stop_name: stop.stop_name,
+      description: stop.description,
+    };
+
+    // Handle location
+    if (stop.location_attributes) {
+      data.location = { create: stop.location_attributes };
+    }
+
+    // Handle media
+    if (stop.media_attributes?.length > 0) {
+      data.media = {
+        create: stop.media_attributes
+          .filter(media => media.id)
+          .map(media => ({ media: { connect: { id: media.id } }}))
+      };
+    }
+
+    return data;
+  }
 };
 
 const tourPackageRepository = new TourPackageRepository();

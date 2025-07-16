@@ -47,14 +47,18 @@ export const vendorProfileValidationRules = [
     .isObject().withMessage('Social media must be an object'),
   
   body('socialMedia.instagram')
-    .optional()
-    .isString().withMessage('Instagram handle must be a string')
-    .matches(/^[a-zA-Z0-9._]{1,30}$/).withMessage('Invalid Instagram handle'),
-  
+  .optional()
+  .isString()
+  .withMessage('Instagram must be a string')
+  .matches(/^(https?:\/\/(www\.)?instagram\.com\/[a-zA-Z0-9._]+|[a-zA-Z0-9._]{1,30})$/)
+  .withMessage('Invalid Instagram URL or handle'),  
+ 
   body('socialMedia.facebook')
-    .optional()
-    .isString().withMessage('Facebook username must be a string')
-    .matches(/^[a-zA-Z0-9.]{5,50}$/).withMessage('Invalid Facebook username'),
+  .optional()
+  .isString()
+  .withMessage('Facebook must be a string')
+  .matches(/^(https?:\/\/(www\.)?facebook\.com\/[a-zA-Z0-9.]+|[a-zA-Z0-9.]{5,50})$/)
+  .withMessage('Invalid Facebook URL or username'),
   
   body('socialMedia.website')
     .optional()
