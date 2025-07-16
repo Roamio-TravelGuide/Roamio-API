@@ -1,3 +1,4 @@
+import { json } from 'express';
 import { VendorService } from './service.js';
 
 export class VendorController {
@@ -17,7 +18,7 @@ export class VendorController {
     }
 
     const profile = await this.vendorService.getVendorProfile(vendorId);
-    
+   
     if (!profile) {
       return res.status(404).json({
         success: false,

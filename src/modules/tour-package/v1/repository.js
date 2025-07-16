@@ -265,7 +265,5 @@ class TourPackageRepository {
   }
 };
 
-
-// Export the repository instance
 const tourPackageRepository = new TourPackageRepository();
 export { tourPackageRepository };

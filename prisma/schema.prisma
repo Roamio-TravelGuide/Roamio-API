@@ -410,7 +410,6 @@ model Vendor {
 }
 model SupportTicket {
   id           Int          @id @default(autoincrement())
-  ticket_id    String       @unique @default(cuid()) 
   user         User         @relation("user_support_tickets", fields: [user_id], references: [id])
   user_id      Int
   user_type    UserRole   
@@ -425,7 +424,7 @@ model SupportTicket {
   status       ReportStatus @default(open)
   resolution   String?       
   resolved_at  DateTime?
-  closed_at    DateTime?
+  opened_at    DateTime?
 
   created_at   DateTime      @default(now())
   updated_at   DateTime      @updatedAt

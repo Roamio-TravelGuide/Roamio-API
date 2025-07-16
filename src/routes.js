@@ -10,9 +10,9 @@ import storageRoutes from './modules/storage/v1/route.js';
 
 const router = Router();
 
-router.get('/', (req, res) => {
-  console.log('GET /api/v1 hit');
-  res.send('API v1 is working');
+router.get("/", (req, res) => {
+  console.log("GET /api/v1 hit");
+  res.send("API v1 is working");
 });
 
 router.use('/auth', authRoutes);

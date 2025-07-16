@@ -49,16 +49,7 @@ class TourPackageService {
 
   async getTourPackageById(id) {
     try {
-      const tourPackage = await tourPackageRepository.findById(id);
-      
-      if (!tourPackage) {
-        return null;
-      }
-
-      // Generate fresh signed URLs for all media
-      const tourWithMediaUrls = await this.enrichTourWithMediaUrls(tourPackage);
-      
-      return tourWithMediaUrls;
+      return await tourPackageRepository.findById(id);
     } catch (error) {
       console.error('Error in fetching service:', error);
       throw error;
@@ -165,6 +156,21 @@ class TourPackageService {
       };
     } catch (error) {
       console.error('Error in getTourPackagesByGuideId service:', error);
+      throw error;
+    }
+  }
+
+  async updateTourPackage(id) {
+    try {
+      const tourPackage = await tourPackageRepository.findById(id);
+      
+      if (!tourPackage) {
+        return null;
+      }
+
+
+    } catch (error) {
+      console.error('Error in fetching service:', error);
       throw error;
     }
   }

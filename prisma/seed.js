@@ -27,6 +27,7 @@ async function clearDatabase() {
   await prisma.payment.deleteMany();
   await prisma.tourStop.deleteMany();
   await prisma.tourPackage.deleteMany();
+  await prisma.supportTicket.deleteMany();
   await prisma.hiddenPlace.deleteMany();
   await prisma.pOI.deleteMany();
   await prisma.media.deleteMany();
@@ -1831,6 +1832,88 @@ async function seedReports(users, packages) {
   });
 }
 
+async function seedSupportTickets(users) {
+  console.log("🎫 Seeding support tickets...");
+
+  const travelGuides = await prisma.travelGuide.findMany();
+  const vendors = await prisma.vendor.findMany();
+
+  await prisma.supportTicket.createMany({
+    data: [
+      {
+        user_id: users.traveler1.id,
+        user_type: "traveler",
+        category: "payment",
+        subject: "Payment issue with tour package",
+        description:
+          "I made a payment for the Colombo Cultural Experience tour but haven't received confirmation. The amount was deducted from my account but the booking status shows as pending.",
+        urgency: "high",
+        status: "in_progress",
+        opened_at: new Date("2024-01-20T09:30:00Z"),
+        created_at: new Date("2024-01-20T09:30:00Z"),
+      },
+      {
+        user_id: users.guide2.id,
+        user_type: "travel_guide",
+        travel_guide_id: travelGuides[1].id,
+        category: "technical",
+        subject: "Unable to upload tour package images",
+        description:
+          "I'm experiencing difficulties uploading images for my new tour package. The upload keeps failing with an error message. I've tried different image formats but the issue persists.",
+        urgency: "medium",
+        status: "open",
+        opened_at: new Date("2024-01-25T14:20:00Z"),
+        created_at: new Date("2024-01-25T14:20:00Z"),
+      },
+      {
+        user_id: users.vendor1.id,
+        user_type: "vendor",
+        vendor_id: vendors[0].id,
+        category: "account",
+        subject: "POI approval status inquiry",
+        description:
+          "My POI submission for Paradise Beach Resort was submitted over a week ago but still shows as pending approval. Could you please provide an update on the review process?",
+        urgency: "low",
+        status: "resolved",
+        resolution:
+          "POI has been approved and is now live on the platform. We apologize for the delay in the review process.",
+        opened_at: new Date("2024-01-18T11:45:00Z"),
+        resolved_at: new Date("2024-01-22T16:30:00Z"),
+        created_at: new Date("2024-01-18T11:45:00Z"),
+      },
+      {
+        user_id: users.traveler3.id,
+        user_type: "traveler",
+        category: "customer",
+        subject: "Tour guide no-show issue",
+        description:
+          "I had a booking for the Ancient Wonders Adventure tour yesterday, but the guide never showed up at the meeting point. I waited for over an hour and tried calling multiple times with no response.",
+        urgency: "high",
+        status: "in_progress",
+        opened_at: new Date("2024-01-30T18:15:00Z"),
+        created_at: new Date("2024-01-30T18:15:00Z"),
+      },
+      {
+        user_id: users.guide5.id,
+        user_type: "travel_guide",
+        travel_guide_id: travelGuides[4].id,
+        category: "feature_request",
+        subject: "Request for multi-language audio support",
+        description:
+          "It would be great to have the ability to upload audio guides in multiple languages for the same tour package. Many of my international clients speak different languages and this would enhance their experience.",
+        urgency: "low",
+        status: "open",
+        opened_at: new Date("2024-02-01T10:00:00Z"),
+        created_at: new Date("2024-02-01T10:00:00Z"),
+      },
+    ],
+  });
+
+  console.log(
+    "✅ Created 5 support tickets with various categories and statuses"
+  );
+}
+
 async function main() {
   try {
     console.log("🌱 Starting comprehensive database seeding...\n");
@@ -1850,6 +1933,7 @@ async function main() {
     await seedHiddenPlaces(users, locations, media);
     await seedPOIs(users, locations);
     await seedReports(users, packages);
+    await seedSupportTickets(users);
 
     // Count packages by status
     const packageCounts = await prisma.tourPackage.groupBy({
@@ -1859,8 +1943,14 @@ async function main() {
       },
     });
 
-    // Count tour stops
+    // Count tour stops and support tickets
     const totalStops = await prisma.tourStop.count();
+    const supportTicketCounts = await prisma.supportTicket.groupBy({
+      by: ["status"],
+      _count: {
+        status: true,
+      },
+    });
 
     console.log("\n🎉 Comprehensive database seeding completed successfully!");
     console.log("\n📊 Summary:");
@@ -1884,6 +1974,11 @@ async function main() {
     console.log("- 3 Hidden places (2 approved, 1 pending)");
     console.log("- 4 POIs (3 approved, 1 pending_approval)");
     console.log("- 4 Reports (3 resolved, 1 open)");
+    console.log("- 5 Support tickets with status distribution:");
+
+    supportTicketCounts.forEach((count) => {
+      console.log(`  • ${count.status}: ${count._count.status} tickets`);
+    });
 
     console.log("\n🔐 Test Login Credentials:");
     console.log("┌─────────────┬─────────────────────┬───────────────┐");

@@ -14,7 +14,7 @@ export class VendorRepository {
           select: {
             email: true,
             phone_no: true,
-            address: true
+            
           }
         },
         logo: {
@@ -31,7 +31,7 @@ export class VendorRepository {
     });
   } catch (error) {
     console.error('Repository Error:', error);
-    throw new Error('DATABASE_ERROR');
+    throw new Error(error);
   }
 }
 
@@ -58,7 +58,7 @@ export class VendorRepository {
       data: {
         email: updateData.email,
         phone_no: updateData.phone,
-        last_updated: new Date()
+        
       }
     });
   }

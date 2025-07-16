@@ -2,8 +2,8 @@ import { Router } from 'express';
 import multer from 'multer';
 import { VendorController } from './controller.js';
 import authenticate from '../../../middleware/auth.js';
-import { validateRequest } from '../../../middleware/validation.js';
 import { vendorProfileValidationRules } from './validate.js';
+import { validateRequest } from './validateRequest.js';
 
 const router = Router();
 const upload = multer();
