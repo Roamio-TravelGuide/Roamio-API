@@ -152,4 +152,16 @@ export class SupportService {
       throw new Error("Failed to fetch ticket statistics");
     }
   }
+
+  async addSolutionToTicket(ticketId, resolution, adminId) {
+    try {
+      return await this.supportRepository.addsolution(
+        parseInt(ticketId),
+        resolution
+      );
+    } catch (error) {
+      console.error("Failed to add solution:", error);
+      throw error;
+    }
+  }
 }
