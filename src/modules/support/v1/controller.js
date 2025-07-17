@@ -372,6 +372,34 @@ class SupportController {
       });
     }
   }
+
+  // In controller.js - add this method to the SupportController class
+   async addSolutionToTicket(req, res) {
+    try {
+      const ticketId = parseInt(req.params.id, 10);
+      const { resolution } = req.body;
+      const adminId = req.user.id;
+
+      const updatedTicket = await supportService.addSolutionToTicket(
+        ticketId,
+        resolution,
+        adminId
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Solution added successfully",
+        data: updatedTicket,
+      });
+    } catch (error) {
+      console.error("Error adding solution to ticket:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to add solution",
+      });
+    }
+  }
+
 }
 
 export default new SupportController();

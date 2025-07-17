@@ -212,6 +212,34 @@ export const validateQueryParams = (req, res, next) => {
   next();
 };
 
+// In validate.js - add this schema
+export const addSolutionSchema = Joi.object({
+  resolution: Joi.string().min(10).max(2000).required().messages({
+    "string.min": "Resolution must be at least 10 characters long",
+    "string.max": "Resolution cannot exceed 2000 characters",
+    "any.required": "Resolution is required",
+  }),
+});
+
+// And add the validation middleware
+export const validateAddSolution = (req, res, next) => {
+  const { error, value } = addSolutionSchema.validate(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation error",
+      errors: error.details.map((detail) => ({
+        field: detail.path.join("."),
+        message: detail.message,
+      })),
+    });
+  }
+
+  req.body = value;
+  next();
+};
+
 // Validation for ticket ID parameter
 export const validateTicketId = (req, res, next) => {
   const ticketId = parseInt(req.params.id);
