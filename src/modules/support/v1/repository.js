@@ -295,4 +295,25 @@ export class SupportRepository {
       throw error;
     }
   }
+
+  async addsolution(ticketId, resolutionData) {
+    return await prisma.supportTicket.update({
+      where: { id: parseInt(ticketId) },
+      data: {
+        resolution: resolutionData,
+        status: "resolved",
+        resolved_at: new Date(),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
 }

@@ -9,6 +9,8 @@ import {
 } from "./validate.js";
 import authenticate from "../../../middleware/auth.js";
 import { requireAdmin, optionalAuth } from "../../../middleware/roles.js";
+import { validateAddSolution } from "./validate.js";
+
 
 const router = Router();
 
@@ -58,6 +60,15 @@ router.put(
   requireAdmin,
   supportController.updateTicketStatus
 );
+
+router.put(
+  "/admin/tickets/:id/resolution",
+  authenticate,
+  validateTicketId,
+  validateAddSolution,
+  requireAdmin,
+  supportController.addSolutionToTicket
+);
 router.get(
   "/admin/stats",
   authenticate,
@@ -65,5 +76,6 @@ router.get(
   requireAdmin,
   supportController.getTicketStats
 );
+
 
 export default router;
