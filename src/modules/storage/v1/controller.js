@@ -166,7 +166,4 @@ export class StorageController {
       });
     }
   }
-
-  // Add to StorageController class in controller.js
-
 }
