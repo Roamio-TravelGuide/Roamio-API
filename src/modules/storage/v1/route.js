@@ -17,8 +17,5 @@ router.get('/media/urls', controller.getMediaUrls);
 
 router.delete('/temp-cover/:key', controller.deleteTempCover);
 
-// Add to route.js after existing routes
-router.post('/vendor/logo', upload.single('logo'), controller.uploadVendorLogo);
-router.post('/vendor/gallery', upload.single('image'), controller.uploadVendorGallery);
-router.get('/vendor/media', controller.getVendorMedia);
+
 export default router;

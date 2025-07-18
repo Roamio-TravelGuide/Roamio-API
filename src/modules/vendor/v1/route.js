@@ -21,6 +21,7 @@ router.put(
   (req, res) => vendorController.updateVendorProfile(req, res)
 );
 
+/*
 // Upload vendor logo
 router.post(
   '/logo', 
@@ -36,5 +37,5 @@ router.post(
   upload.single('cover'),
   (req, res) => vendorController.uploadVendorCover(req, res)
 );
-
+*/
 export default router;

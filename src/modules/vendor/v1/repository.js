@@ -62,7 +62,7 @@ export class VendorRepository {
       }
     });
   }
-
+/*
   async updateVendorLogo(vendorId, mediaId) {
     return this.prisma.vendor.update({
       where: { user_id: vendorId },
@@ -82,4 +82,5 @@ export class VendorRepository {
       }
     });
   }
+    */
 }

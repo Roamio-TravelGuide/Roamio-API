@@ -69,6 +69,7 @@ export class VendorController {
     }
   }
 
+  /*
   async uploadVendorLogo(req, res) {
     try {
       if (!req.file) {
@@ -126,4 +127,5 @@ export class VendorController {
       });
     }
   }
+    */
 }

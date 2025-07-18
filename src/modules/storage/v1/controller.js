@@ -168,46 +168,5 @@ export class StorageController {
   }
 
   // Add to StorageController class in controller.js
-uploadVendorLogo = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
 
-    const result = await this.storageService.uploadVendorLogo(
-      req.user.id, 
-      req.file
-    );
-
-    res.status(200).json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
-
-uploadVendorGallery = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
-    const result = await this.storageService.uploadVendorGalleryImage(
-      req.user.id,
-      req.file
-    );
-
-    res.status(200).json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
-
-getVendorMedia = async (req, res) => {
-  try {
-    const media = await this.storageService.getVendorMediaUrls(req.user.id);
-    res.status(200).json({ media });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
 }

@@ -1,10 +1,10 @@
 import { VendorRepository } from './repository.js';
-import { StorageService } from '../../storage/v1/service.js';
+//import { StorageService } from '../../storage/v1/service.js';
 
 export class VendorService {
   constructor() {
     this.vendorRepository = new VendorRepository();
-    this.storageService = new StorageService();
+    //this.storageService = new StorageService();
   }
 
   async getVendorProfile(vendorId) {
@@ -59,7 +59,7 @@ export class VendorService {
 
     return this.getVendorProfile(vendorId); // Return transformed data
   }
-
+/*
   async uploadVendorLogo(vendorId, file) {
     // Validate file type and size
     if (!file.mimetype.startsWith('image/')) {
@@ -99,4 +99,5 @@ export class VendorService {
       url: uploadResult.url
     };
   }
+    */
 }
