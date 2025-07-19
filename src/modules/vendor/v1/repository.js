@@ -92,7 +92,7 @@ export class VendorRepository {
         business_license: vendorData.business_license,
         social_media_links: vendorData.social_media_links,
         created_at: new Date(),
-        last_updated: new Date()
+        last_updated: new Date(),
       },
       include: {
         user: {
@@ -100,33 +100,33 @@ export class VendorRepository {
             email: true,
             phone_no: true,
             name: true,
-            bio: true
-          }
+            bio: true,
+          },
         },
         logo: {
           select: {
-            url: true
-          }
+            url: true,
+          },
         },
         cover_image: {
           select: {
-            url: true
-          }
-        }
-      }
+            url: true,
+          },
+        },
+      },
     });
   }
 
   async getAllVendorUsers() {
     return this.prisma.user.findMany({
-      where: { role: 'vendor' },
+      where: { role: "vendor" },
       include: {
-        vendor_profile: true
-      }
+        vendor_profile: true,
+      },
     });
   }
 
-/*
+  /*
   async updateVendorLogo(vendorId, mediaId) {
     return this.prisma.vendor.update({
       where: { user_id: vendorId },
