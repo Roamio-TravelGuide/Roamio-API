@@ -1,16 +1,24 @@
-import prisma from '../../../database/connection.js';
+import prisma from "../../../database/connection.js";
 
 class TourPackageRepository {
   async findMany(filters) {
-    const { status, search, location, dateFrom, dateTo, page = 1, limit = 10 } = filters;
+    const {
+      status,
+      search,
+      location,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 10,
+    } = filters;
     const skip = (page - 1) * limit;
     const where = {};
 
     if (status) where.status = status;
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
+        { title: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
       ];
     }
     if (dateFrom || dateTo) {
@@ -26,16 +34,16 @@ class TourPackageRepository {
           guide: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
-              }
-            }
-          }
+                select: { id: true, name: true, email: true },
+              },
+            },
+          },
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
         skip,
-        take: limit
+        take: limit,
       }),
-      prisma.tourPackage.count({ where })
+      prisma.tourPackage.count({ where }),
     ]);
 
     return { packages, total, page, limit };
@@ -48,20 +56,20 @@ class TourPackageRepository {
         guide: {
           include: {
             user: {
-              select: { 
-                id: true, 
-                name: true, 
+              select: {
+                id: true,
+                name: true,
                 email: true,
                 phone_no: true,
                 profile_picture_url: true,
-                bio: true
-              }
-            }
-          }
+                bio: true,
+              },
+            },
+          },
         },
         cover_image: true,
         tour_stops: {
-          orderBy: { sequence_no: 'asc' },
+          orderBy: { sequence_no: "asc" },
           include: {
             location: true,
             media: {
@@ -71,14 +79,14 @@ class TourPackageRepository {
                     uploader: {
                       select: {
                         id: true,
-                        name: true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         reviews: {
           include: {
@@ -88,22 +96,22 @@ class TourPackageRepository {
                   select: {
                     id: true,
                     name: true,
-                    profile_picture_url: true
-                  }
-                }
-              }
-            }
+                    profile_picture_url: true,
+                  },
+                },
+              },
+            },
           },
-          orderBy: { date: 'desc' }
+          orderBy: { date: "desc" },
         },
         downloads: {
-          orderBy: { date: 'desc' }
+          orderBy: { date: "desc" },
         },
         payments: {
-          where: { status: 'completed' },
-          orderBy: { paid_at: 'desc' }
-        }
-      }
+          where: { status: "completed" },
+          orderBy: { paid_at: "desc" },
+        },
+      },
     });
   }
 
@@ -113,26 +121,26 @@ class TourPackageRepository {
       data: {
         status,
         rejection_reason: rejectionReason || null,
-        updated_at: new Date()
+        updated_at: new Date(),
       },
       include: {
         guide: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
-            }
-          }
-        }
-      }
+              select: { id: true, name: true, email: true },
+            },
+          },
+        },
+      },
     });
   }
 
   async getStatistics() {
     const [pending, published, rejected, total] = await Promise.all([
-      prisma.tourPackage.count({ where: { status: 'pending_approval' } }),
-      prisma.tourPackage.count({ where: { status: 'published' } }),
-      prisma.tourPackage.count({ where: { status: 'rejected' } }),
-      prisma.tourPackage.count()
+      prisma.tourPackage.count({ where: { status: "pending_approval" } }),
+      prisma.tourPackage.count({ where: { status: "published" } }),
+      prisma.tourPackage.count({ where: { status: "rejected" } }),
+      prisma.tourPackage.count(),
     ]);
 
     return { pending, published, rejected, total };
@@ -140,18 +148,18 @@ class TourPackageRepository {
 
   async create(data) {
     if (!data.title || !data.guide_id) {
-      throw new Error('Title and guide_id are required');
+      throw new Error("Title and guide_id are required");
     }
 
     const tourData = {
       title: data.title,
-      description: data.description || '',
+      description: data.description || "",
       price: data.price || 0,
       duration_minutes: data.duration_minutes || 0,
       guide_id: data.guide_id,
-      status: 'pending_approval',
+      status: "pending_approval",
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     };
 
     try {
@@ -163,61 +171,61 @@ class TourPackageRepository {
               user: {
                 select: {
                   name: true,
-                  email: true
-                }
-              }
-            }
-          }
-        }
+                  email: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       return {
         success: true,
         data: tourPackage,
-        message: 'Tour package created successfully'
+        message: "Tour package created successfully",
       };
     } catch (error) {
-      console.error('Error creating tour package:', error);
-      
-      if (error.code === 'P2002') {
-        throw new Error('A tour with similar details already exists');
+      console.error("Error creating tour package:", error);
+
+      if (error.code === "P2002") {
+        throw new Error("A tour with similar details already exists");
       }
-      
-      if (error.code === 'P2003') {
-        throw new Error('Invalid guide_id specified');
+
+      if (error.code === "P2003") {
+        throw new Error("Invalid guide_id specified");
       }
-      
-      throw new Error('Failed to create tour package');
+
+      throw new Error("Failed to create tour package");
     }
   }
 
-  async findByGuideId(guideId , filters = {}) {
+  async findByGuideId(guideId, filters = {}) {
     try {
       const guide = await prisma.travelGuide.findUnique({
-        where: { 
-          user_id: parseInt(guideId) 
+        where: {
+          user_id: parseInt(guideId),
         },
-        select: { 
-          id: true 
-        }
+        select: {
+          id: true,
+        },
       });
 
       const where = {
-        guide_id: guide.id
+        guide_id: guide.id,
       };
 
       if (!guide) {
         return { packages: [], total: 0 };
       }
 
-      if (filters.status && filters.status !== 'all') {
+      if (filters.status && filters.status !== "all") {
         where.status = filters.status;
       }
-      
+
       if (filters.search) {
         where.OR = [
-          { title: { contains: filters.search, mode: 'insensitive' } },
-          { description: { contains: filters.search, mode: 'insensitive' } }
+          { title: { contains: filters.search, mode: "insensitive" } },
+          { description: { contains: filters.search, mode: "insensitive" } },
         ];
       }
 
@@ -230,36 +238,36 @@ class TourPackageRepository {
                 user: {
                   select: {
                     name: true,
-                    profile_picture_url: true
-                  }
-                }
-              }
+                    profile_picture_url: true,
+                  },
+                },
+              },
             },
             cover_image: {
               select: {
-                url: true
-              }
+                url: true,
+              },
             },
             tour_stops: {
               include: {
                 location: {
                   select: {
-                    city: true
-                  }
-                }
-              }
-            }
+                    city: true,
+                  },
+                },
+              },
+            },
           },
-          orderBy: { created_at: 'desc' },
+          orderBy: { created_at: "desc" },
           skip: (filters.page - 1) * filters.limit,
-          take: filters.limit
+          take: filters.limit,
         }),
-        prisma.tourPackage.count({ where })
+        prisma.tourPackage.count({ where }),
       ]);
 
       return { packages, total };
     } catch (error) {
-      console.error('findByGuideId repository error:', error.message);
+      console.error("findByGuideId repository error:", error.message);
       throw error;
     }
   }
@@ -272,7 +280,7 @@ class TourPackageRepository {
       // 1. Verify package exists
       const packageExists = await prisma.tourPackage.findUnique({
         where: { id },
-        select: { id: true, tour_stops: { select: { id: true } } }
+        select: { id: true, tour_stops: { select: { id: true } } },
       });
 
       if (!packageExists) {
@@ -280,9 +288,13 @@ class TourPackageRepository {
       }
 
       // 2. Validate and prepare media first
-      const mediaValidation = await this.validateMediaConnections(tour_stops_attributes);
+      const mediaValidation = await this.validateMediaConnections(
+        tour_stops_attributes
+      );
       if (mediaValidation.invalidMedia.length > 0) {
-        throw new Error(`Invalid media IDs: ${mediaValidation.invalidMedia.join(', ')}`);
+        throw new Error(
+          `Invalid media IDs: ${mediaValidation.invalidMedia.join(", ")}`
+        );
       }
 
       // 3. Prepare update data
@@ -292,24 +304,22 @@ class TourPackageRepository {
         updated_at: new Date(),
         tour_stops: {
           update: [],
-          create: []
-        }
+          create: [],
+        },
       };
 
       // 4. Process existing stops
-      const existingStopIds = packageExists.tour_stops.map(stop => stop.id);
+      const existingStopIds = packageExists.tour_stops.map((stop) => stop.id);
       for (const stop of tour_stops_attributes) {
         if (stop.id && existingStopIds.includes(stop.id)) {
           // Update existing stop
           updateData.tour_stops.update.push({
             where: { id: stop.id },
-            data: this.prepareStopUpdateData(stop)
+            data: this.prepareStopUpdateData(stop),
           });
         } else {
           // Create new stop
-          updateData.tour_stops.create.push(
-            this.prepareStopCreateData(stop)
-          );
+          updateData.tour_stops.create.push(this.prepareStopCreateData(stop));
         }
       }
 
@@ -329,19 +339,18 @@ class TourPackageRepository {
             tour_stops: {
               include: {
                 location: true,
-                media: { include: { media: true } }
+                media: { include: { media: true } },
               },
-              orderBy: { sequence_no: 'asc' }
-            }
-          }
+              orderBy: { sequence_no: "asc" },
+            },
+          },
         });
       });
-
     } catch (error) {
-      console.error('Error updating tour package:', {
+      console.error("Error updating tour package:", {
         error: error.message,
         stack: error.stack,
-        inputData: data
+        inputData: data,
       });
       throw new Error(`Failed to update tour package: ${error.message}`);
     }
@@ -358,7 +367,7 @@ class TourPackageRepository {
           if (media.id) {
             mediaIds.push(media.id);
           } else {
-            invalidMedia.push('undefined');
+            invalidMedia.push("undefined");
           }
         }
       }
@@ -368,10 +377,10 @@ class TourPackageRepository {
     if (mediaIds.length > 0) {
       const existingMedia = await prisma.media.findMany({
         where: { id: { in: mediaIds } },
-        select: { id: true }
+        select: { id: true },
       });
 
-      const existingIds = existingMedia.map(m => m.id);
+      const existingIds = existingMedia.map((m) => m.id);
       for (const id of mediaIds) {
         if (!existingIds.includes(id)) {
           invalidMedia.push(id);
@@ -401,8 +410,8 @@ class TourPackageRepository {
       data.media = {
         deleteMany: {},
         create: stop.media_attributes
-          .filter(media => media.id)
-          .map(media => ({ media: { connect: { id: media.id } }}))
+          .filter((media) => media.id)
+          .map((media) => ({ media: { connect: { id: media.id } } })),
       };
     }
 
@@ -425,14 +434,32 @@ class TourPackageRepository {
     if (stop.media_attributes?.length > 0) {
       data.media = {
         create: stop.media_attributes
-          .filter(media => media.id)
-          .map(media => ({ media: { connect: { id: media.id } }}))
+          .filter((media) => media.id)
+          .map((media) => ({ media: { connect: { id: media.id } } })),
       };
     }
 
     return data;
   }
-};
+
+  async getTourPackageRevenue() {
+    try {
+      const result = await prisma.payment.aggregate({
+        where: {
+          status: "completed",
+          transaction_id: {not:null},
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+      return result._sum.amount || 0;
+    } catch (error) {
+      console.error("Error calculating total revenue: ", error);
+      throw new Error("Failed to calculate total revenue");
+    }
+  }
+}
 
 const tourPackageRepository = new TourPackageRepository();
 export { tourPackageRepository };
