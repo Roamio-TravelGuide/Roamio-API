@@ -380,11 +380,86 @@ class TourPackageController {
     }
   }  
 
-    // In TourPackageController class
-  async updateTourPackage(req, res) {
+  async updateTour(req, res) {
     try {
       const { id } = req.params;
-      // console.log(req.params);
+      const updateData = req.body;
+      // console.log(updateData);
+
+      // if (updateData.tour_stops && updateData.tour_stops[0]) {
+      //   const firstStop = updateData.tour_stops[0];
+        
+      //   // Check if first stop has media
+      //   if (firstStop.media && firstStop.media.length > 0) {
+      //     console.log(`Media for Stop 1 (${firstStop.stop_name}):`);
+          
+      //     firstStop.media.forEach((media, index) => {
+      //       console.log(`  Media ${index + 1}:`);
+      //       console.log(`    Type: ${media.media_type}`);
+      //       console.log(`    URL: ${media.url}`);
+      //       console.log(`    S3 Key: ${media.s3_key}`);
+      //       console.log(`    Duration: ${media.duration_seconds || 'N/A'} seconds`);
+      //       console.log('    -------------------');
+      //     });
+      //   } else {
+      //     console.log('First stop has no media');
+      //   }
+      // } else {
+      //   console.log('Tour has no stops');
+      // }
+      
+      if (!id || !updateData) {
+        return res.status(400).json({ error: 'Tour ID and update data are required' });
+      }
+
+      const updatedTour = await tourPackageService.updateTour(id, updateData);
+      res.status(200).json(updatedTour);
+    } catch (error) {
+      console.error('Error updating tour:', error);
+      res.status(500).json({ error: error.message || 'Failed to update tour' });
+    }
+  }
+
+async submitForApproval(req, res) {
+  try {
+    const { id } = req.params;
+
+    // console.log(id);
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid tour package ID'
+      });
+    }
+
+    if (req.body.tour) {
+      await tourPackageService.updateTourPackage(parseInt(id), req.body);
+    }
+
+    const submittedPackage = await tourPackageService.updateTourPackageStatus(
+      parseInt(id),
+      { status: 'pending_approval' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: submittedPackage
+    });
+  } catch (error) {
+    console.error('Error submitting tour:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error'
+    });
+  }
+}
+
+  async deleteTourPackage(req,res){
+    try {
+      const {id} = req.params;
+      console.log(id);
+
       if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
           success: false,
@@ -392,30 +467,17 @@ class TourPackageController {
         });
       }
 
-      const updatedPackage = await tourPackageService.updateTourPackage(
-        parseInt(id),
-        req.body
-      );
+      const deleteTour = await tourPackageService.deleteTourPackage(parseInt(id));
 
-      if (!updatedPackage) {
-        return res.status(404).json({
-          success: false,
-          message: 'Tour package not found'
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: updatedPackage
-      });
     } catch (error) {
-      console.error('Error updating tour package:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Internal server error'
+        console.error('Error Deleting tour package:', error);
+        return res.status(500).json({
+          success: false,
+          message: error.message || 'Internal server error'
       });
     }
   }
+
 }
 
 export default new TourPackageController();

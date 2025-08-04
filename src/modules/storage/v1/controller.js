@@ -5,12 +5,17 @@ export class StorageController {
     this.storageService = new StorageService();
   }
 
-  // Temporary upload endpoint
   tempCoverUpload = async (req, res) => {  
-    try {
-      // console.log(req.body.sessionId);
-      if (!req.file || !req.body.sessionId) {
-        return res.status(400).json({ error: 'No file uploaded or sessionId error' });
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // console.log(req.body.tour_id);
+
+    if (req.body.sessionId) {
+      if (!req.body.type) {
+        return res.status(400).json({ error: 'Type is required for new uploads' });
       }
       
       const result = await this.storageService.tempCoverUpload(
@@ -19,16 +24,37 @@ export class StorageController {
         req.body.sessionId
       );
       
-      res.status(200).json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+      return res.status(200).json(result);
     }
+
+    else if (req.body.tour_id) {
+
+      // console.log(req.body.tour_id);
+
+      if (!req.body.type) {
+        return res.status(400).json({ error: 'Type is required for tour updates' });
+      }
+      
+      const result = await this.storageService.updateTourCover(
+        req.file,
+        req.body.type,
+        req.body.tour_id
+      );
+      
+      return res.status(200).json(result);
+    }
+    else {
+      return res.status(400).json({ error: 'Either sessionId or tourId must be provided' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+}
+
 
   finalizeUploads = async (req, res) => {
     try {
-      console.log(req.body);
-      const { fileReferences, packageId , uploadedById} = req.body;
+      const { fileReferences, packageId, uploadedById } = req.body;
       
       if (!fileReferences || !packageId) {
         return res.status(400).json({ 
@@ -69,7 +95,6 @@ export class StorageController {
     }
   }
 
-  // Get all media URLs for a tour package (for moderators)
   getTourPackageMedia = async (req, res) => {
     try {
       const { packageId } = req.params;
@@ -96,7 +121,6 @@ export class StorageController {
     }
   }
 
-  // Get signed URLs for specific media files
   getMediaUrls = async (req, res) => {
     try {
       const { mediaIds } = req.query;
@@ -124,38 +148,58 @@ export class StorageController {
     }
   }
 
+
   tempUploadMedia = async (req, res) => {  
     try {
       if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
       }
+
+      if (!req.body.stopIndex) {
+        return res.status(400).json({ error: 'stopIndex is required' });
+      }
+
+      const hasSessionId = !!req.body.sessionId;
+      const hasTourId = !!req.body.tour_id;
       
-      if (!req.body.sessionId || !req.body.stopIndex) {
-        return res.status(400).json({ error: 'sessionId and stopIndex are required' });
+      if (!hasSessionId && !hasTourId) {
+        return res.status(400).json({ error: 'Either sessionId or tour_id is required' });
       }
       
+      if (hasSessionId && hasTourId) {
+        return res.status(400).json({ error: 'Provide either sessionId or tour_id, not both' });
+      }
+
       const type = req.body.type || 'stop_image';
+      let result;
+
+      if (hasTourId) {
+        result = await this.storageService.uploadMedia(
+          req.file,
+          type,
+          req.body.tour_id,
+          req.body.stopIndex
+        );
+      } else {
+        result = await this.storageService.tempUploadMedia(
+          req.file,
+          type,
+          req.body.sessionId,
+          req.body.stopIndex
+        );
+      }
       
-      const result = await this.storageService.tempUploadMedia(
-        req.file,
-        type,
-        req.body.sessionId,
-        req.body.stopIndex
-      );
-      
-      // Generate URL for immediate use
       result.url = await this.storageService.getFileUrl(result.key);
-      
       res.status(200).json(result);
+
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
 
-  deleteTempCover = async(req,res) => {
+  deleteTempCover = async(req, res) => {
     try {
       const { key } = req.params;
-      // console.log(key);
       await this.storageService.deleteTempCover(key);
       res.status(200).json({ success: true });
     } catch (error) {
@@ -163,6 +207,66 @@ export class StorageController {
       res.status(500).json({ 
         success: false, 
         error: error.message || 'Failed to delete temporary cover' 
+      });
+    }
+  }
+
+  async updateTourPackage(req, res) {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid tour package ID'
+        });
+      }
+
+      if (updateData.mediaUpdates) {
+        try {
+          await this.storageService.handleMediaUpdates(
+            parseInt(id),
+            updateData.mediaUpdates
+          );
+        } catch (mediaError) {
+          console.error('Media update failed:', mediaError);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to process media updates'
+          });
+        }
+      }
+
+      const updatedPackage = await tourPackageService.updateTourPackage(
+        parseInt(id),
+        updateData
+      );
+
+      if (!updatedPackage) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tour package not found'
+        });
+      }
+
+      if (updateData.sessionId) {
+        try {
+          await this.storageService.cleanupTempFiles(updateData.sessionId);
+        } catch (cleanupError) {
+          console.error('Temp cleanup failed:', cleanupError);
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: updatedPackage
+      });
+    } catch (error) {
+      console.error('Error updating tour package:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Internal server error'
       });
     }
   }
