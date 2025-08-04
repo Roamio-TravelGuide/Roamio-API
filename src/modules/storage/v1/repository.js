@@ -3,7 +3,10 @@ import {
   CopyObjectCommand, 
   DeleteObjectCommand, 
   GetObjectCommand,
-  HeadObjectCommand  // Added missing import
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+  S3Client
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, bucketName } from '../../../config/s3.config.js';
@@ -51,7 +54,7 @@ export class StorageRepository {
         ? 'Upload timed out' 
         : 'Failed to upload file');
     }
-    }
+  }
 
   async moveFile(sourceKey, destinationKey) {
     try {
@@ -134,6 +137,37 @@ export class StorageRepository {
     }
   }
 
+   async folderExists(prefix) {
+    try {
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: prefix,
+        MaxKeys: 1
+      });
+      
+      const data = await s3Client.send(command);
+      return data.Contents && data.Contents.length > 0;
+    } catch (error) {
+      console.error("Error checking folder existence:", error);
+      return false;
+    }
+  }
+
+  async listFiles(prefix) {
+    try {
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: prefix
+      });
+      
+      const data = await s3Client.send(command);
+      return data.Contents || [];
+    } catch (error) {
+      console.error("Error listing files:", error);
+      throw new Error('Failed to list files');
+    }
+  }
+
   async deleteFile(key) {
     try {
       const command = new DeleteObjectCommand({
@@ -145,6 +179,59 @@ export class StorageRepository {
     } catch (error) {
       console.error('Delete error:', error);
       throw new Error('Failed to delete file');
+    }
+  }
+
+  async deleteFolderContents(prefix) {
+    try {
+      const listParams = {
+        Bucket: bucketName,
+        Prefix: prefix
+      };
+
+      const listedObjects = await s3Client.send(new ListObjectsV2Command(listParams));
+      
+      if (listedObjects.Contents.length === 0) return;
+
+      const deleteParams = {
+        Bucket: bucketName,
+        Delete: { Objects: [] }
+      };
+
+      listedObjects.Contents.forEach(({ Key }) => {
+        deleteParams.Delete.Objects.push({ Key });
+      });
+
+      await s3Client.send(new DeleteObjectsCommand(deleteParams));
+
+      if (listedObjects.IsTruncated) {
+        await this.deleteFolderContents(prefix);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting folder contents:', error);
+      throw new Error('Failed to delete folder contents');
+    }
+  }
+
+  async createFolder(prefix) {
+    try {
+      if (!prefix.endsWith('/')) {
+        prefix += '/';
+      }
+      
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: prefix,
+        Body: '', 
+      });
+
+      await s3Client.send(command);
+      return { success: true };
+    } catch (error) {
+      console.error('Folder creation error:', error);
+      throw new Error('Failed to create folder');
     }
   }
 
