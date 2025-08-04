@@ -57,45 +57,34 @@ class TourPackageService {
 
   async getTourPackageById(id) {
     try {
-      return await tourPackageRepository.findById(id);
+      const tourPackage = await tourPackageRepository.findById(id);
+      if (!tourPackage) return null;
+      
+      return await this.enrichTourWithMediaUrls(tourPackage);
     } catch (error) {
-      console.error("Error in fetching service:", error);
+      console.error('Error in getTourPackageById:', error);
       throw error;
     }
   }
 
-  // Helper method to enrich tour data with fresh media URLs
   async enrichTourWithMediaUrls(tourPackage) {
     try {
-      // Generate URL for cover image if it exists
       if (tourPackage.cover_image?.s3_key) {
         try {
-          // Check if s3_key is valid
-          if (
-            tourPackage.cover_image.s3_key === "undefined" ||
-            tourPackage.cover_image.s3_key === ""
-          ) {
-            console.warn(
-              `Cover image ${tourPackage.cover_image.id} has invalid s3_key: "${tourPackage.cover_image.s3_key}"`
-            );
-            // Keep existing URL (might be external URL from seed data)
+          if (tourPackage.cover_image.s3_key === 'undefined' || tourPackage.cover_image.s3_key === '') {
+            console.warn(`Cover image ${tourPackage.cover_image.id} has invalid s3_key`);
             tourPackage.cover_image_url = tourPackage.cover_image.url;
           } else {
-            const coverImageUrl = await this.storageService.getFileUrl(
-              tourPackage.cover_image.s3_key,
-              7200
-            ); // 2 hours
+            const coverImageUrl = await this.storageService.getFileUrl(tourPackage.cover_image.s3_key, 7200);
             tourPackage.cover_image.url = coverImageUrl;
-            tourPackage.cover_image_url = coverImageUrl; // For backward compatibility
+            tourPackage.cover_image_url = coverImageUrl;
           }
         } catch (error) {
           console.error(`Failed to generate cover image URL: ${error.message}`);
-          // Keep existing URL as fallback
           tourPackage.cover_image_url = tourPackage.cover_image.url;
         }
       }
 
-      // Generate URLs for tour stop media
       if (tourPackage.tour_stops) {
         await Promise.all(
           tourPackage.tour_stops.map(async (stop) => {
@@ -104,28 +93,14 @@ class TourPackageService {
                 stop.media.map(async (stopMedia) => {
                   if (stopMedia.media?.s3_key) {
                     try {
-                      // Check if s3_key is valid
-                      if (
-                        stopMedia.media.s3_key === "undefined" ||
-                        stopMedia.media.s3_key === ""
-                      ) {
-                        console.warn(
-                          `Media ${stopMedia.media.id} has invalid s3_key: "${stopMedia.media.s3_key}"`
-                        );
-                        // Keep existing URL (might be external URL from seed data)
-                        // No need to update as we'll keep the existing URL
+                      if (stopMedia.media.s3_key === 'undefined' || stopMedia.media.s3_key === '') {
+                        console.warn(`Media ${stopMedia.media.id} has invalid s3_key`);
                       } else {
-                        const mediaUrl = await this.storageService.getFileUrl(
-                          stopMedia.media.s3_key,
-                          7200
-                        ); // 2 hours
+                        const mediaUrl = await this.storageService.getFileUrl(stopMedia.media.s3_key, 7200);
                         stopMedia.media.url = mediaUrl;
                       }
                     } catch (error) {
-                      console.error(
-                        `Failed to generate media URL for ${stopMedia.media.id}: ${error.message}`
-                      );
-                      // Keep existing URL as fallback
+                      console.error(`Failed to generate media URL for ${stopMedia.media.id}: ${error.message}`);
                     }
                   }
                 })
@@ -137,8 +112,8 @@ class TourPackageService {
 
       return tourPackage;
     } catch (error) {
-      console.error("Error enriching tour with media URLs:", error);
-      return tourPackage; // Return original data if URL generation fails
+      console.error('Error enriching tour with media URLs:', error);
+      return tourPackage;
     }
   }
 
@@ -146,7 +121,7 @@ class TourPackageService {
     try {
       return await tourPackageRepository.create(tourData);
     } catch (error) {
-      console.error("Error in createTourPackage service:", error);
+      console.error('Error in createTourPackage:', error);
       throw error;
     }
   }
@@ -174,8 +149,6 @@ class TourPackageService {
         throw new Error("Invalid guide ID");
       }
 
-      // console.log(guideId);
-
       const result = await tourPackageRepository.findByGuideId(
         guideId,
         filters
@@ -188,35 +161,60 @@ class TourPackageService {
         limit: filters.limit || 10,
       };
     } catch (error) {
-      console.error("Error in getTourPackagesByGuideId service:", error);
+      console.error('Error in getTourPackagesByGuideId:', error);
       throw error;
     }
   }
 
-  async updateTourPackage(id, updateData) {
+  async deleteTourPackage(id) {
     try {
-      // Check if package exists
       const existingPackage = await this.getTourPackageById(id);
       if (!existingPackage) {
         return null;
-      }
+      } 
 
-      // Update the package using repository
-      const updatedPackage = await tourPackageRepository.updateTourPackage(
-        id,
-        updateData
-      );
-
-      // Enrich with fresh media URLs if needed
-      return await this.enrichTourWithMediaUrls(updatedPackage);
+      return await tourPackageRepository.deleteTourPackage(id);
     } catch (error) {
-      console.error("Error updating tour package:", error);
+      console.error('Error deleting tour package:', error);
       throw error;
     }
   }
 
-  async getTotalRevenue() {
-    return tourPackageRepository.getTourPackageRevenue();
+   async updateTour(id, updateData) {
+    try {
+      if (!updateData.title || !updateData.description) {
+        throw new Error('Title and description are required');
+      }
+      
+      if (updateData.price <= 0) {
+        throw new Error('Price must be greater than 0');
+      }
+      
+      if (updateData.duration_minutes <= 0) {
+        throw new Error('Duration must be greater than 0');
+      }
+
+      const currentTour = await prisma.tourPackage.findUnique({
+        where: { id: parseInt(id) },
+        select: { status: true }
+      });
+
+      if (!currentTour) {
+        throw new Error('Tour package not found');
+      }
+
+      if (currentTour.status === 'rejected') {
+        updateData.status = 'pending_approval';
+        updateData.rejection_reason = null;
+      }
+
+      const updatedTour = await tourPackageRepository.updateTour(id, updateData);
+      
+      return updatedTour;
+    } catch (error) {
+      console.error('Error in tour service:', error);
+      throw error;
+    }
   }
 }
 
