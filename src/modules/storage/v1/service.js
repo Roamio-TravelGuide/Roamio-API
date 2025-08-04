@@ -8,7 +8,6 @@ export class StorageService {
     this.repository = new StorageRepository();
   }
 
-  // Temporary upload for cover images
   async tempCoverUpload(file, type, sessionId) {
     if (!file || !type || !sessionId)
       throw new Error("File, type and sessionId are required");
@@ -30,7 +29,42 @@ export class StorageService {
     };
   }
 
-  // Temporary upload for stop media
+  async updateTourCover(file, type, tourId) {
+    if (!file || !type || !tourId) {
+      throw new Error("File, type and tourId are required");
+    }
+
+    // console.log(type);
+
+    const tourFolder = `packages/${tourId}/`;
+    const folderExists = await this.repository.folderExists(tourFolder);
+
+    if (!folderExists) {
+      throw new Error("Tour package not found");
+    }
+
+    // const existingCovers = await this.repository.listFiles(`${tourFolder}cover/`);
+    // for (const cover of existingCovers) {
+    //   await this.repository.deleteFile(cover.key);
+    // }
+
+    const key = `${tourFolder}cover/${Date.now()}-${file.originalname}`;
+    await this.repository.uploadFile({
+      file,
+      key,
+      contentType: file.mimetype,
+    });
+
+    return {
+      tourId,
+      key,
+      type,
+      media_type: "image",
+      format: file.mimetype,
+      file_size: file.size,
+    };
+  }
+
   async tempUploadMedia(file, type, sessionId, stopIndex) {
     if (!file || !type || !sessionId || stopIndex === undefined) {
       throw new Error("File, type, sessionId and stopIndex are required");
@@ -55,69 +89,58 @@ export class StorageService {
     };
   }
 
-  //   async finalizeUploads(fileReferences, packageId, uploadedById) {
-  //     if (!fileReferences?.length || !packageId || !uploadedById) {
-  //       throw new Error('Invalid file references, package ID or uploader ID');
-  //     }
+  async uploadMedia(file, type, tour_id, stopIndex) {
+    if (!file || !type || !tour_id || stopIndex === undefined) {
+      throw new Error("File, type, tour_id and stopIndex are required");
+    }
 
-  //     const results = await Promise.all(
-  //       fileReferences.map(async (ref) => {
-  //         const newKey = this._getPermanentKey(ref, packageId);
+    const validTypes = ['stop_audio', 'stop_image'];
+    if (!validTypes.includes(type)) {
+      throw new Error(`Invalid type. Must be one of: ${validTypes.join(', ')}`);
+    }
 
-  //         // 1. Move file in S3
-  //         await this.repository.moveFile(ref.key, newKey);
+    const mediaTypeFolder = type === 'stop_audio' ? 'audio' : 'images';
+    const stopFolder = `packages/${tour_id}/stops/${stopIndex}/`;
+    const mediaFolder = `${stopFolder}${mediaTypeFolder}/`;
 
-  //         // 2. Create media record
-  //         const mediaRecord = await this.repository.createMediaRecord({
-  //           url: await this.repository.getSignedUrl(newKey),
-  //           s3_key: newKey,
-  //           media_type: ref.type === 'stop_audio' ? 'audio' : 'image',
-  //           duration_seconds: ref.duration_seconds,
-  //           uploaded_by_id: uploadedById,
-  //           file_size: ref.file_size,
-  //           format: ref.format
-  //         });
+    const tourFolder = `packages/${tour_id}/`;
+    const tourExists = await this.repository.folderExists(tourFolder);
+    if (!tourExists) {
+      throw new Error(`Tour package with ID ${tour_id} not found`);
+    }
 
-  //         // 3. If this is a cover image, update the tour package
-  //         if (ref.type === 'cover') {
-  //           await prisma.tourPackage.update({
-  //             where: { id: parseInt(packageId) },
-  //             data: { cover_image_id: mediaRecord.id }
-  //           });
-  //         }
+    const stopExists = await this.repository.folderExists(stopFolder);
+    if (!stopExists) {
+      await this.repository.createFolder(stopFolder);
+      await this.repository.createFolder(mediaFolder);
+    }
 
-  //         return {
-  //           ...ref,
-  //           permanent_url: mediaRecord.url,
-  //           media_id: mediaRecord.id,
-  //           s3Key: newKey
-  //         };
-  //       })
-  //     );
+    const filename = `${Date.now()}-${file.originalname}`;
+    const key = `${mediaFolder}${filename}`;
 
-  //   // Handle tour stop media relationships
-  //   const stopMedia = results.filter(r => r.type !== 'cover');
-  //   if (stopMedia.length > 0) {
-  //     await prisma.tourStopMedia.createMany({
-  //       data: stopMedia.map(media => ({
-  //         stop_id: media.stopIndex + 1,
-  //         media_id: media.media_id
-  //       })),
-  //       skipDuplicates: true
-  //     });
-  //   }
+    await this.repository.uploadFile({
+      file,
+      key,
+      contentType: file.mimetype,
+    });
 
-  //   return results;
-  // }
+    return {
+      tour_id,
+      key,
+      type,
+      stopIndex,
+      media_type: type === 'stop_audio' ? 'audio' : 'image',
+      format: file.mimetype,
+      file_size: file.size,
+    };
+  }
 
-  // In service.js - Update finalizeUploads method
   async finalizeUploads(fileReferences, packageId, uploadedById) {
     if (!fileReferences?.length || !packageId || !uploadedById) {
       throw new Error("Invalid file references, package ID or uploader ID");
     }
 
     return await prisma.$transaction(async (tx) => {
-      // 1. Verify stops exist first
       const tourStops = await tx.tourStop.findMany({
         where: { package_id: parseInt(packageId) },
         orderBy: { sequence_no: "asc" },
@@ -130,15 +153,12 @@ export class StorageService {
         );
       }
 
-      // 2. Process all files
       const results = await Promise.all(
         fileReferences.map(async (ref) => {
           const newKey = this._getPermanentKey(ref, packageId);
 
-          // Move file in S3
           await this.repository.moveFile(ref.key, newKey);
 
-          // Create media record
           const mediaRecord = await tx.media.create({
             data: {
               url: await this.repository.getFileUrl(newKey),
@@ -151,7 +171,6 @@ export class StorageService {
             },
           });
 
-          // Handle cover image separately
           if (ref.type === "cover") {
             await tx.tourPackage.update({
               where: { id: parseInt(packageId) },
@@ -160,7 +179,6 @@ export class StorageService {
             return { ...ref, media_id: mediaRecord.id };
           }
 
-          // Link media to stop
           const stopIndex = ref.stopIndex;
           if (stopIndex >= tourStops.length) {
             throw new Error(`Stop index ${stopIndex} out of range`);
@@ -180,36 +198,78 @@ export class StorageService {
       return results;
     });
   }
-  // Generate pre-signed URL for viewing
+
+  async handleMediaUpdates(packageId, mediaUpdates) {
+    try {
+      const results = {
+        movedFiles: [],
+        deletedFiles: [],
+        errors: []
+      };
+
+      if (mediaUpdates.moveOperations?.length) {
+        await Promise.all(
+          mediaUpdates.moveOperations.map(async (moveOp) => {
+            try {
+              await this.repository.moveFile(moveOp.sourceKey, moveOp.destinationKey);
+              results.movedFiles.push({
+                from: moveOp.sourceKey,
+                to: moveOp.destinationKey
+              });
+            } catch (error) {
+              results.errors.push({
+                operation: 'move',
+                key: moveOp.sourceKey,
+                error: error.message
+              });
+            }
+          })
+        );
+      }
+
+      if (mediaUpdates.deleteOperations?.length) {
+        await Promise.all(
+          mediaUpdates.deleteOperations.map(async (key) => {
+            try {
+              await this.repository.deleteFile(key);
+              results.deletedFiles.push(key);
+            } catch (error) {
+              results.errors.push({
+                operation: 'delete',
+                key,
+                error: error.message
+              });
+            }
+          })
+        );
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Error in handleMediaUpdates:', error);
+      throw error;
+    }
+  }
+
+  async cleanupTempFiles(sessionId) {
+    try {
+      const prefix = `temp/${sessionId}/`;
+      await this.repository.deleteFolderContents(prefix);
+      return { success: true };
+    } catch (error) {
+      console.error('Error cleaning up temp files:', error);
+      throw error;
+    }
+  }
+
   async getFileUrl(s3Key, expiresIn = 3600) {
     return this.repository.getSignedUrl(s3Key, expiresIn);
   }
 
-  _getPermanentKey(fileRef, packageId) {
-    if (!fileRef?.key) {
-      throw new Error("Invalid file reference - missing key property");
-    }
-
-    const filename = fileRef.key.split("/").pop();
-    const timestamp = Date.now();
-
-    switch (fileRef.type) {
-      case "cover":
-        return `packages/${packageId}/cover/${timestamp}_${filename}`;
-      case "stop_audio":
-        return `packages/${packageId}/stops/${fileRef.stopIndex}/audio/${timestamp}_${filename}`;
-      case "stop_image":
-        return `packages/${packageId}/stops/${fileRef.stopIndex}/images/${timestamp}_${filename}`;
-      default:
-        throw new Error(`Invalid file type: ${fileRef.type}`);
-    }
-  }
-  // Get all media URLs for a tour package (for moderators)
   async getTourPackageMediaUrls(packageId) {
     try {
       const package_id = parseInt(packageId);
 
-      // Get all media associated with this tour package
       const tourPackageData = await prisma.tourPackage.findUnique({
         where: { id: package_id },
         include: {
@@ -236,7 +296,6 @@ export class StorageService {
         tour_stops: [],
       };
 
-      // Add cover image if exists
       if (tourPackageData.cover_image) {
         const coverUrl = await this.getFileUrl(
           tourPackageData.cover_image.s3_key
@@ -251,7 +310,6 @@ export class StorageService {
         };
       }
 
-      // Process tour stops
       for (const stop of tourPackageData.tour_stops) {
         const stopMedia = [];
 
@@ -286,7 +344,6 @@ export class StorageService {
     }
   }
 
-  // Get signed URLs for specific media files by IDs
   async getMediaUrls(mediaIds) {
     try {
       const ids = mediaIds.map((id) => parseInt(id));
@@ -322,20 +379,14 @@ export class StorageService {
     }
   }
 
-  async deleteTempCover(key){
+  async deleteTempCover(key) {
     try {
-      // console.log(key);
       const exists = await this.repository.checkFileExists(key);
       if (!exists) {
         throw new Error('File not found');
       }
       
       await this.repository.deleteFile(key);
-      
-      // You might also want to clean up any database records here
-      // For example:
-      // await this.tempUploadRepository.deleteByKey(key);
-      
       return true;
     } catch (error) {
       console.error('StorageService.deleteTempCover error:', error);
@@ -406,4 +457,26 @@ async getVendorMediaUrls(userId) {
     }))
   );
 }
+}
+
+
+  _getPermanentKey(fileRef, packageId) {
+    if (!fileRef?.key) {
+      throw new Error("Invalid file reference - missing key property");
+    }
+
+    const filename = fileRef.key.split("/").pop();
+    const timestamp = Date.now();
+
+    switch (fileRef.type) {
+      case "cover":
+        return `packages/${packageId}/cover/${timestamp}_${filename}`;
+      case "stop_audio":
+        return `packages/${packageId}/stops/${fileRef.stopIndex}/audio/${timestamp}_${filename}`;
+      case "stop_image":
+        return `packages/${packageId}/stops/${fileRef.stopIndex}/images/${timestamp}_${filename}`;
+      default:
+        throw new Error(`Invalid file type: ${fileRef.type}`);
+    }
+  }
 }
