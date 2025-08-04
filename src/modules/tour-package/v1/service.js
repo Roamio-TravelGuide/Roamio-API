@@ -1,6 +1,6 @@
-import prisma from '../../../database/connection.js';
-import { tourPackageRepository } from './repository.js';
-import { StorageService } from '../../storage/v1/service.js';
+import prisma from "../../../database/connection.js";
+import { tourPackageRepository } from "./repository.js";
+import { StorageService } from "../../storage/v1/service.js";
 
 class TourPackageService {
   constructor() {
@@ -8,17 +8,25 @@ class TourPackageService {
   }
 
   async getTourPackages(filters = {}) {
-    const { status, search, location, dateFrom, dateTo, page = 1, limit = 10 } = filters;
+    const {
+      status,
+      search,
+      location,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 10,
+    } = filters;
     const where = {};
 
     if (status) where.status = status;
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
+        { title: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
       ];
     }
-    if (location) where.location = { contains: location, mode: 'insensitive' };
+    if (location) where.location = { contains: location, mode: "insensitive" };
     if (dateFrom || dateTo) {
       where.created_at = {};
       if (dateFrom) where.created_at.gte = new Date(dateFrom);
@@ -32,16 +40,16 @@ class TourPackageService {
           guide: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
-              }
-            }
-          }
+                select: { id: true, name: true, email: true },
+              },
+            },
+          },
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
         skip: (page - 1) * limit,
-        take: limit
+        take: limit,
       }),
-      prisma.tourPackage.count({ where })
+      prisma.tourPackage.count({ where }),
     ]);
 
     return { packages, total, page, limit };
@@ -120,9 +128,13 @@ class TourPackageService {
 
   async updateTourPackageStatus(id, statusData) {
     try {
-      return await tourPackageRepository.updateStatus(id, statusData.status, statusData.rejection_reason);
+      return await tourPackageRepository.updateStatus(
+        id,
+        statusData.status,
+        statusData.rejection_reason
+      );
     } catch (error) {
-      if (error.code === 'P2025') return null;
+      if (error.code === "P2025") return null;
       throw error;
     }
   }
@@ -134,16 +146,19 @@ class TourPackageService {
   async getTourPackagesByGuideId(guideId, filters = {}) {
     try {
       if (!guideId || isNaN(guideId)) {
-        throw new Error('Invalid guide ID');
+        throw new Error("Invalid guide ID");
       }
 
-      const result = await tourPackageRepository.findByGuideId(guideId, filters);
+      const result = await tourPackageRepository.findByGuideId(
+        guideId,
+        filters
+      );
 
       return {
         packages: result.packages,
         total: result.total,
         page: filters.page || 1,
-        limit: filters.limit || 10
+        limit: filters.limit || 10,
       };
     } catch (error) {
       console.error('Error in getTourPackagesByGuideId:', error);
