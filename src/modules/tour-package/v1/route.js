@@ -1,6 +1,6 @@
-import { Router } from 'express';
+import { Router } from "express";
 import multer from 'multer';
-import tourPackageController from './controller.js';
+import tourPackageController from "./controller.js";
 
 const router = Router();
 const upload = multer();
@@ -12,8 +12,8 @@ router.get('/guide/:guideId', tourPackageController.getTourPackagesByGuideId);
 router.post('/createTour', tourPackageController.createTourPackage);
 router.patch('/:id/status', tourPackageController.updateTourPackageStatus);
 
-router.post('/tour-stops/bulk',tourPackageController.createTourStops)
-router.post('/locations', tourPackageController.createLocation)
+router.post("/tour-stops/bulk", tourPackageController.createTourStops);
+router.post("/locations", tourPackageController.createLocation);
 
 router.delete('/:id' , tourPackageController.deleteTourPackage)
 

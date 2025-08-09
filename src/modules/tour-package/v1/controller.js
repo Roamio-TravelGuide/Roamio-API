@@ -1,6 +1,5 @@
-
-import tourPackageService from './service.js';
-import { PrismaClient } from '@prisma/client';
+import tourPackageService from "./service.js";
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 class TourPackageController {
@@ -13,20 +12,20 @@ class TourPackageController {
         dateFrom: req.query.dateFrom,
         dateTo: req.query.dateTo,
         page: req.query.page ? parseInt(req.query.page) : 1,
-        limit: req.query.limit ? parseInt(req.query.limit) : 10
+        limit: req.query.limit ? parseInt(req.query.limit) : 10,
       };
 
       const result = await tourPackageService.getTourPackages(filters);
-      
+
       res.status(200).json({
         success: true,
-        data: result
+        data: result,
       });
     } catch (error) {
-      console.error('Error fetching tour packages:', error);
+      console.error("Error fetching tour packages:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
   }
@@ -34,33 +33,34 @@ class TourPackageController {
   async getTourPackageById(req, res) {
     try {
       const { id } = req.params;
-      
+
       if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid tour package ID'
+          message: "Invalid tour package ID",
         });
       }
 
-      const tourPackage = await tourPackageService.getTourPackageById(parseInt(id));
+      const tourPackage = await tourPackageService.getTourPackageById(
+        parseInt(id)
+      );
 
       if (!tourPackage) {
         return res.status(404).json({
           success: false,
-          message: 'Tour package not found'
+          message: "Tour package not found",
         });
       }
 
       return res.status(200).json({
         success: true,
-        data: tourPackage
+        data: tourPackage,
       });
-      
     } catch (error) {
-      console.error('Error fetching tour package:', error);
+      console.error("Error fetching tour package:", error);
       return res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
   }
@@ -68,54 +68,64 @@ class TourPackageController {
   async getTourPackageById(req, res) {
     try {
       const { id } = req.params;
-      
+
       if (!id || isNaN(parseInt(id))) {
         res.status(400).json({
           success: false,
-          message: 'Invalid tour package ID'
+          message: "Invalid tour package ID",
         });
         return;
       }
 
-      const tourPackage = await tourPackageService.getTourPackageById(parseInt(id));
-      
+      const tourPackage = await tourPackageService.getTourPackageById(
+        parseInt(id)
+      );
+
       if (!tourPackage) {
         res.status(404).json({
           success: false,
-          message: 'Tour package not found'
+          message: "Tour package not found",
         });
         return;
       }
 
       res.status(200).json({
         success: true,
-        data: tourPackage
+        data: tourPackage,
       });
     } catch (error) {
-      console.error('Error fetching tour package:', error);
+      console.error("Error fetching tour package:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
   }
 
   async createTourPackage(req, res) {
     try {
-      const { title, description, price, duration_minutes, guide_id, stops = [] } = req.body;
+      const {
+        title,
+        description,
+        price,
+        duration_minutes,
+        guide_id,
+        stops = [],
+      } = req.body;
 
       const guide = await prisma.travelGuide.findUnique({
-        where: { 
-          user_id: parseInt(guide_id) 
+        where: {
+          user_id: parseInt(guide_id),
         },
-        select: { 
-          id: true 
-        }
+        select: {
+          id: true,
+        },
       });
 
-
       if (!title || !guide.id) {
-        return res.status(400).json({ error: 'Title and guide_id are required' });
+        return res
+          .status(400)
+          .json({ error: "Title and guide_id are required" });
       }
 
       const result = await prisma.$transaction(async (tx) => {
@@ -123,31 +133,31 @@ class TourPackageController {
         const tourPackage = await tx.tourPackage.create({
           data: {
             title,
-            description: description || '',
+            description: description || "",
             price: price || 0,
             duration_minutes: duration_minutes || 0,
             guide_id: parseInt(guide.id),
-            status: 'pending_approval'
-          }
+            status: "pending_approval",
+          },
         });
 
         // 2. Process locations and stops
         const createdStops = await Promise.all(
           stops.map(async (stop, index) => {
             let locationId = null;
-            
+
             // Create location if coordinates exist
             if (stop.location) {
               const location = await tx.location.create({
                 data: {
                   longitude: stop.location.longitude,
                   latitude: stop.location.latitude,
-                  address: stop.location.address || '',
-                  city: stop.location.city || '',
-                  province: stop.location.province || '',
-                  district: stop.location.district || '',
-                  postal_code: stop.location.postal_code || ''
-                }
+                  address: stop.location.address || "",
+                  city: stop.location.city || "",
+                  province: stop.location.province || "",
+                  district: stop.location.district || "",
+                  postal_code: stop.location.postal_code || "",
+                },
               });
               locationId = location.id;
             }
@@ -158,30 +168,29 @@ class TourPackageController {
                 package_id: tourPackage.id,
                 sequence_no: index + 1, // 1-based index
                 stop_name: stop.stop_name || `Stop ${index + 1}`,
-                description: stop.description || '',
-                location_id: locationId
-              }
+                description: stop.description || "",
+                location_id: locationId,
+              },
             });
           })
         );
 
         return {
           tourPackage,
-          stops: createdStops
+          stops: createdStops,
         };
       });
 
       res.status(201).json({
         success: true,
         data: result.tourPackage,
-        stops: result.stops
+        stops: result.stops,
       });
-
     } catch (error) {
-      console.error('Tour creation failed:', error);
-      res.status(500).json({ 
+      console.error("Tour creation failed:", error);
+      res.status(500).json({
         error: error.message,
-        details: error.stack 
+        details: error.stack,
       });
     }
   }
@@ -194,52 +203,55 @@ class TourPackageController {
       if (!id || isNaN(parseInt(id))) {
         res.status(400).json({
           success: false,
-          message: 'Invalid tour package ID'
+          message: "Invalid tour package ID",
         });
         return;
       }
 
-      if (!status || !['published', 'rejected'].includes(status)) {
+      if (!status || !["published", "rejected"].includes(status)) {
         res.status(400).json({
           success: false,
-          message: 'Status must be either "published" or "rejected"'
+          message: 'Status must be either "published" or "rejected"',
         });
         return;
       }
 
-      if (status === 'rejected' && !rejection_reason) {
+      if (status === "rejected" && !rejection_reason) {
         res.status(400).json({
           success: false,
-          message: 'Rejection reason is required when status is "rejected"'
+          message: 'Rejection reason is required when status is "rejected"',
         });
         return;
       }
 
       const statusData = {
         status,
-        rejection_reason: status === 'rejected' ? rejection_reason : undefined
+        rejection_reason: status === "rejected" ? rejection_reason : undefined,
       };
 
-      const updatedPackage = await tourPackageService.updateTourPackageStatus(parseInt(id), statusData);
-      
+      const updatedPackage = await tourPackageService.updateTourPackageStatus(
+        parseInt(id),
+        statusData
+      );
+
       if (!updatedPackage) {
         res.status(404).json({
           success: false,
-          message: 'Tour package not found'
+          message: "Tour package not found",
         });
         return;
       }
 
       res.status(200).json({
         success: true,
-        message: 'Tour package status updated successfully',
-        data: updatedPackage
+        message: "Tour package status updated successfully",
+        data: updatedPackage,
       });
     } catch (error) {
-      console.error('Error updating tour package status:', error);
+      console.error("Error updating tour package status:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
   }
@@ -247,16 +259,16 @@ class TourPackageController {
   async getTourPackageStatistics(req, res) {
     try {
       const statistics = await tourPackageService.getTourPackageStatistics();
-      
+
       res.status(200).json({
         success: true,
-        data: statistics
+        data: statistics,
       });
     } catch (error) {
-      console.error('Error fetching tour package statistics:', error);
+      console.error("Error fetching tour package statistics:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
   }
@@ -266,11 +278,11 @@ class TourPackageController {
       // console.log(req.params);
       const { guideId } = req.params;
       const { status, search, page = 1, limit = 10 } = req.query;
-      
+
       if (!guideId || isNaN(parseInt(guideId))) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid guide ID'
+          message: "Invalid guide ID",
         });
       }
 
@@ -278,31 +290,42 @@ class TourPackageController {
         status,
         search,
         page: parseInt(page),
-        limit: parseInt(limit)
+        limit: parseInt(limit),
       };
 
-      const result = await tourPackageService.getTourPackagesByGuideId(parseInt(guideId), filters);
+      const result = await tourPackageService.getTourPackagesByGuideId(
+        parseInt(guideId),
+        filters
+      );
 
       res.status(200).json({
         success: true,
         data: result.packages,
         total: result.total,
         page: result.page,
-        limit: result.limit
+        limit: result.limit,
       });
     } catch (error) {
-      console.error('Error fetching tour packages by guide:', error);
+      console.error("Error fetching tour packages by guide:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
-  } 
+  }
 
   async createLocation(req, res) {
     try {
-      const { longitude, latitude, address, city, province, district, postal_code } = req.body;
-      
+      const {
+        longitude,
+        latitude,
+        address,
+        city,
+        province,
+        district,
+        postal_code,
+      } = req.body;
+
       const newLocation = await prisma.location.create({
         data: {
           longitude: parseFloat(longitude),
@@ -311,13 +334,13 @@ class TourPackageController {
           city,
           province,
           district,
-          postal_code
-        }
+          postal_code,
+        },
       });
 
       res.status(201).json(newLocation);
     } catch (error) {
-      console.error('Location creation failed:', error);
+      console.error("Location creation failed:", error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -328,21 +351,23 @@ class TourPackageController {
       const { package_id, stops } = req.body;
 
       if (!package_id || !stops?.length) {
-        return res.status(400).json({ error: 'Package ID and stops are required' });
+        return res
+          .status(400)
+          .json({ error: "Package ID and stops are required" });
       }
 
       const createdStops = await prisma.$transaction(async (tx) => {
         // Create stops
         const stopsCreated = await Promise.all(
-          stops.map(stop => 
+          stops.map((stop) =>
             tx.tourStop.create({
               data: {
                 package_id: parseInt(package_id),
                 sequence_no: stop.sequence_no,
                 stop_name: stop.stop_name,
-                description: stop.description || '',
-                location_id: stop.location_id || null
-              }
+                description: stop.description || "",
+                location_id: stop.location_id || null,
+              },
             })
           )
         );
@@ -355,16 +380,16 @@ class TourPackageController {
                 data: {
                   longitude: parseFloat(stop.location.longitude),
                   latitude: parseFloat(stop.location.latitude),
-                  address: stop.location.address || '',
-                  city: stop.location.city || '',
-                  province: stop.location.province || '',
-                  district: stop.location.district || '',
-                  postal_code: stop.location.postal_code || ''
-                }
+                  address: stop.location.address || "",
+                  city: stop.location.city || "",
+                  province: stop.location.province || "",
+                  district: stop.location.district || "",
+                  postal_code: stop.location.postal_code || "",
+                },
               });
               await tx.tourStop.update({
                 where: { id: stop.id },
-                data: { location_id: location.id }
+                data: { location_id: location.id },
               });
             }
           })
@@ -375,10 +400,10 @@ class TourPackageController {
 
       res.status(201).json(createdStops);
     } catch (error) {
-      console.error('Error creating tour stops:', error);
+      console.error("Error creating tour stops:", error);
       res.status(500).json({ error: error.message });
     }
-  }  
+  }
 
   async updateTour(req, res) {
     try {
