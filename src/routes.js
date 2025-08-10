@@ -15,7 +15,7 @@ router.get("/", (req, res) => {
 });
 
 router.use('/auth', authRoutes);
-router.use('/tour-packages', tourPackageRoutes);
+router.use('/tour-package', tourPackageRoutes);
 router.use('/users', userRoutes);
 
 router.use('/storage', storageRoutes);
