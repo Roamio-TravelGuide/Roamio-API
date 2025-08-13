@@ -39,12 +39,13 @@ export class PaymentRepository {
         todayEnd.setHours(23, 59, 59, 999); // End of today
 
         // Get all metrics in parallel for better performance
-        const [total, today, monthly] = await Promise.all([
+        const [total, today, monthly,sold_packages] = await Promise.all([
             // Total completed revenue
             this.prisma.payment.aggregate({
                 _sum: { amount: true },
                 where: { status: 'completed' }
             }),
+            
             
             // Today's revenue
             this.prisma.payment.aggregate({
@@ -68,7 +69,11 @@ export class PaymentRepository {
                 AND EXTRACT(YEAR FROM paid_at) = EXTRACT(YEAR FROM NOW())
                 GROUP BY month
                 ORDER BY month
-            `
+            `,
+            //count of completed packages
+            this.prisma.payment.count({
+                where:{status:'completed'}
+            })
         ]);
 
         // Format monthly data
@@ -78,6 +83,7 @@ export class PaymentRepository {
         });
 
         return {
+            sold_packages:sold_packages,
             total_revenue: total._sum.amount || 0,
             today_revenue: today._sum.amount || 0, // Today's revenue
             monthly: monthlyFormatted,
