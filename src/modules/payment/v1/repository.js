@@ -70,7 +70,6 @@ export class PaymentRepository {
                 GROUP BY month
                 ORDER BY month
             `,
-            //best seller
             //count of completed packages
             this.prisma.payment.count({
                 where:{status:'completed'}
