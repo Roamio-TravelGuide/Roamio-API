@@ -12,7 +12,8 @@ class TourPackageController {
         dateFrom: req.query.dateFrom,
         dateTo: req.query.dateTo,
         page: req.query.page ? parseInt(req.query.page) : 1,
-        limit: req.query.limit ? parseInt(req.query.limit) : 10,
+        limit: req.query.limit ? parseInt(req.query.limit) :100000000000,
+        disablePagination: req.query.disablePagination === 'true'
       };
 
       const result = await tourPackageService.getTourPackages(filters);
