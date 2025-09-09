@@ -7,8 +7,7 @@ CREATE TABLE "vendor" (
     "business_description" TEXT,
     "business_website" TEXT,
     "tagline" TEXT,
-    "cover_image_id" INTEGER,
-    "logo_id" INTEGER,
+    
     "business_license" TEXT NOT NULL,
     "social_media_links" JSONB,
     "verification_status" "POIStatus" NOT NULL DEFAULT 'pending_approval',

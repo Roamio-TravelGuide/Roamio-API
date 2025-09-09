@@ -3,7 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import routes from './routes.js';
 import { errorHandler } from './middleware/error.js';
-import multer from 'multer';
+import path from "path";
+
 
 dotenv.config();
 
@@ -27,6 +28,13 @@ app.use('/api/v1', routes);
 app.get('/', (req, res) => {
   res.send('Server is running');
 });
+
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "public", "uploads"))
+);
+
+
 
 // Error handling middleware - MUST BE LAST
 app.use(errorHandler);
