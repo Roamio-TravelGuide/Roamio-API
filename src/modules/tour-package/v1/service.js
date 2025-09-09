@@ -158,7 +158,7 @@ class TourPackageService {
         packages: result.packages,
         total: result.total,
         page: filters.page || 1,
-        limit: filters.limit || 10,
+        limit: filters.limit || 10000,
       };
     } catch (error) {
       console.error('Error in getTourPackagesByGuideId:', error);
