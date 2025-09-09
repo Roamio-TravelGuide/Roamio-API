@@ -21,6 +21,7 @@ router.use('/users', userRoutes);
 router.use('/storage', storageRoutes);
 router.use('/vendor', vendorRoutes);
 router.use('/support', supportRoutes);
+router.use('/support', supportRoutes);
 router.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });

@@ -267,8 +267,7 @@ model Media {
   tour_stop_media TourStopMedia[]
   hidden_places   HiddenPlace[]
   tour_packages   TourPackage[]   @relation("cover_images")
-  vendor_covers   Vendor[]        @relation("vendor_cover_images")
-  vendor_logos    Vendor[]        @relation("vendor_logos")
+  
 
   @@map("media")
 }
@@ -392,10 +391,8 @@ model Vendor {
   business_description String?
   business_website     String?
   tagline              String? 
-  cover_image    Media? @relation("vendor_cover_images", fields: [cover_image_id], references: [id])
-  cover_image_id Int?
-  logo           Media? @relation("vendor_logos", fields: [logo_id], references: [id])
-  logo_id        Int?
+  cover_url  String?
+  logo_url   String?
   business_license String // Business license number 
   social_media_links Json? 
   verification_status POIStatus @default(pending_approval)
