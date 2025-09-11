@@ -1,14 +1,16 @@
 import { PaymentService } from "./service.js";
+import Stripe from 'stripe';
 
 export class PaymentController {
   constructor() {
     this.paymentService = new PaymentService();
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   }
 
   async getPayment(req, res) {
     try {
       const { id } = req.params;
-      const payment = await this.paymentService.getPayment(id, this.prisma);
+      const payment = await this.paymentService.getPayment(id);
       if (!payment) {
         return res.status(404).json({ error: "Payment not found" });
       }
@@ -22,7 +24,7 @@ export class PaymentController {
     try {
       const revenue = await this.paymentService.getTotalRevenue();
       res.status(200).json({
-        data: revenue, // Keep the structure consistent
+        data: revenue,
         message: "Total revenue fetched successfully",
       });
     } catch (error) {
@@ -31,5 +33,63 @@ export class PaymentController {
         error: error.message || "Failed to calculate revenue",
       });
     }
+  }
+
+  async createPaymentIntent(req, res) {
+    try {
+      const { amount, currency = 'usd', metadata = {} } = req.body;
+      
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          userId: req.user?.id,
+          ...metadata
+        }
+      });
+
+      res.status(201).json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async handleWebhook(req, res) {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+      event = this.stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err) {
+      console.log(`Webhook signature verification failed.`, err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle the event
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        await this.paymentService.handlePaymentSuccess(paymentIntent);
+        break;
+      case 'payment_intent.payment_failed':
+        const failedPayment = event.data.object;
+        await this.paymentService.handlePaymentFailure(failedPayment);
+        break;
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+
+    res.json({ received: true });
   }
 }
