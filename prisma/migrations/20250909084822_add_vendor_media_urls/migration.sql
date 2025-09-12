@@ -6,13 +6,10 @@
 
 */
 -- DropForeignKey
-ALTER TABLE "vendor" DROP CONSTRAINT "vendor_cover_image_id_fkey";
 
--- DropForeignKey
-ALTER TABLE "vendor" DROP CONSTRAINT "vendor_logo_id_fkey";
 
 -- AlterTable
-ALTER TABLE "vendor" DROP COLUMN "cover_image_id",
-DROP COLUMN "logo_id",
-ADD COLUMN     "cover_url" TEXT,
-ADD COLUMN     "logo_url" TEXT;
+ALTER TABLE "vendor"
+ADD COLUMN "cover_url" TEXT,
+ADD COLUMN "logo_url" TEXT;
+
