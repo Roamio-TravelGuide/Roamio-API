@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 class AuthRepository {
   async findUserByEmail(email) {
     return prisma.user.findUnique({ 
-      where: { email , status: 'active' },
+      where: { email, status: 'active' },
       select: {
         id: true,
         email: true,
@@ -60,7 +60,7 @@ class AuthRepository {
             data: {
               user_id: user.id,
               years_of_experience: userData.years_of_experience || 0,
-              verification_documents:userData. verification_documents,
+              verification_documents: userData.verification_documents,
               languages_spoken: userData.languages_spoken || ["English"],
             },
           });
@@ -100,6 +100,101 @@ class AuthRepository {
           throw new Error("Invalid user role");
       }
       return user;
+    });
+  }
+
+  // Save password reset OTP and expiry
+  async savePasswordResetOTP(userId, otp, expiry) {
+    console.log(`Saving OTP to DB - User: ${userId}, OTP: ${otp}, Expiry: ${expiry}`);
+    
+    return prisma.user.update({
+      where: { id: userId },
+      data: {
+        resetOTP: otp,
+        resetOTPExpiry: expiry,
+        resetToken: null, // Clear any existing token
+        resetTokenExpiry: null,
+      },
+    });
+  }
+
+  // Find user by reset OTP - FIXED VERSION
+  // Update the findUserByResetOTP method
+async findUserByResetOTP(otp) {
+  const currentTime = new Date();
+  console.log(`Looking for OTP: ${otp}`);
+  console.log(`Current server time: ${currentTime}`);
+  console.log(`Current UTC time: ${currentTime.toUTCString()}`);
+  
+  // Use UTC time for consistent comparison
+  const utcCurrentTime = new Date(currentTime.toISOString());
+  
+  const result = await prisma.user.findFirst({
+    where: {
+      resetOTP: otp,
+      resetOTPExpiry: {
+        gte: utcCurrentTime, // Use UTC time for consistent comparison
+      },
+    },
+    select: {
+      id: true,
+      email: true,
+      resetOTP: true,
+      resetOTPExpiry: true,
+    },
+  });
+  
+  console.log('Database query result:', result);
+  
+  if (result && result.resetOTPExpiry) {
+    const expiryDate = new Date(result.resetOTPExpiry);
+    const timeDiff = expiryDate - utcCurrentTime;
+    console.log(`OTP expiry: ${expiryDate}`);
+    console.log(`Server time: ${utcCurrentTime}`);
+    console.log(`Time until expiry (ms): ${timeDiff}`);
+    console.log(`Time until expiry (minutes): ${timeDiff / 60000}`);
+  }
+  
+  return result;
+}
+
+  // NEW: Find OTP regardless of expiry status (for debugging)
+  async findOTPAnyStatus(otp) {
+    return prisma.user.findFirst({
+      where: {
+        resetOTP: otp,
+      },
+      select: {
+        id: true,
+        email: true,
+        resetOTP: true,
+        resetOTPExpiry: true,
+      },
+    });
+  }
+
+  // Clear OTP after successful reset
+  async clearPasswordResetOTP(userId) {
+    console.log(`Clearing OTP for user: ${userId}`);
+    
+    return prisma.user.update({
+      where: { id: userId },
+      data: {
+        resetOTP: null,
+        resetOTPExpiry: null,
+      },
+    });
+  }
+
+  // Update user password
+  async updatePassword(userId, newPasswordHash) {
+    console.log(`Updating password for user: ${userId}`);
+    
+    return prisma.user.update({
+      where: { id: userId },
+      data: {
+        password_hash: newPasswordHash,
+      },
     });
   }
 }
