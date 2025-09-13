@@ -13,4 +13,8 @@ export class PaymentService {
   async getTotalRevenue() {
     return this.paymentRepository.getTotalRevenue();
   }
+
+  async getTopPerformerRevenue(){
+    return this.paymentRepository.getTopPerformerRevenue();
+  }
 }
