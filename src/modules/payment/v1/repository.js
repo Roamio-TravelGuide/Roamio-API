@@ -36,17 +36,27 @@ export class PaymentRepository {
             throw new Error('Failed to create payment');
         }
     }
-
+    async createStripPayment(paymentData) {
+       
+        try {
+            return await this.prisma.payment.create({
+                data: paymentData
+            });
+        } catch (error) {
+            console.error('Error creating payment:', error);
+            throw new Error(error);
+        }
+    }
     async updatePaymentStatus(paymentIntentId, status) {
-       try {
-    return await this.prisma.payment.update({
-      where: { transaction_id },
-      data: { status }
-    });
-  } catch (error) {
-    console.error('Error updating payment status:', error);
-    throw new Error('Failed to update payment status');
-  }
+        try {
+            return await this.prisma.payment.update({
+                where: { transaction_id },
+                data: { status }
+            });
+        } catch (error) {
+            console.error('Error updating payment status:', error);
+            throw new Error('Failed to update payment status');
+        }
     }
 
     async getTotalRevenue() {
@@ -54,7 +64,7 @@ export class PaymentRepository {
             // Get current date range for today's revenue
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0); // Start of today
-            
+
             const todayEnd = new Date();
             todayEnd.setHours(23, 59, 59, 999); // End of today
 
@@ -65,11 +75,11 @@ export class PaymentRepository {
                     _sum: { amount: true },
                     where: { status: 'succeeded' }
                 }),
-                
+
                 // Today's revenue
                 this.prisma.payment.aggregate({
                     _sum: { amount: true },
-                    where: { 
+                    where: {
                         status: 'succeeded',
                         createdAt: {
                             gte: todayStart,
@@ -77,7 +87,7 @@ export class PaymentRepository {
                         }
                     }
                 }),
-                
+
                 // Monthly breakdown
                 this.prisma.$queryRaw`
                     SELECT 
@@ -111,7 +121,7 @@ export class PaymentRepository {
                 growth_rate: 0,
                 as_of_date: new Date().toISOString()
             };
-            
+
         } catch (error) {
             console.error("Revenue calculation error:", {
                 error: error.message,

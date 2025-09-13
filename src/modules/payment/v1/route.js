@@ -14,7 +14,11 @@ router.get("/revenue", (req, res) =>
 router.post("/create-payment-intent", (req, res) =>
   paymentController.createPaymentIntent(req, res)
 );
+// 🔹 TEMP: removed authenticate so you can test Stripe
+router.post("/create-strip-payment", (req, res) =>
+    paymentController.createStripPayment(req, res)
 
+);
 // Webhook (Stripe doesn't use auth)
 router.post("/webhook", (req, res) =>
   paymentController.handleWebhook(req, res)

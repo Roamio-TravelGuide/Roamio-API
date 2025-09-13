@@ -38,7 +38,7 @@ export class PaymentController {
   async createPaymentIntent(req, res) {
     try {
       const { amount, currency = 'usd', metadata = {} } = req.body;
-      
+
       // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await this.stripe.paymentIntents.create({
         amount: Math.round(amount * 100), // Convert to cents
@@ -60,7 +60,20 @@ export class PaymentController {
       res.status(500).json({ error: error.message });
     }
   }
+  async createStripPayment(req, res) {
+    try {
+      const data = req.body;
 
+      const stripPaymentData = await this.paymentService.createStripPayment(data);
+
+      res.status(201).json({
+        clientSecret: stripPaymentData.client_secret,
+        paymentIntentId: stripPaymentData.id
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
   async handleWebhook(req, res) {
     const sig = req.headers['stripe-signature'];
     let event;

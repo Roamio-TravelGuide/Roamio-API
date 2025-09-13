@@ -18,7 +18,7 @@ export class PaymentService {
   async getTotalRevenue() {
     return this.paymentRepository.getTotalRevenue();
   }
-async ensureStripeCustomer(userId) {
+  async ensureStripeCustomer(userId) {
     const vendor = await prisma.vendor.findUnique({
       where: { user_id: userId },
       include: { user: true },
@@ -46,26 +46,43 @@ async ensureStripeCustomer(userId) {
 
   async handlePaymentSuccess(paymentIntent) {
     const { id, amount, metadata } = paymentIntent;
-    
+
     // Save payment to database
     const paymentData = {
-    transaction_id: id,
-    user_id: parseInt(metadata.userId), // Prisma expects user_id
-    amount: amount / 100,
-    status: 'succeeded',
-    currency: paymentIntent.currency,
-    payment_method: paymentIntent.payment_method_types[0],
-    receipt_url: charge?.receipt_url || null,
-    paid_at: new Date(),
-    invoice_number: paymentIntent.invoice || null,
+      transaction_id: id,
+      user_id: parseInt(metadata.userId), // Prisma expects user_id
+      amount: amount / 100,
+      status: 'succeeded',
+      currency: paymentIntent.currency,
+      payment_method: paymentIntent.payment_method_types[0],
+      receipt_url: charge?.receipt_url || null,
+      paid_at: new Date(),
+      invoice_number: paymentIntent.invoice || null,
     };
-    
+
     return await this.paymentRepository.createPayment(paymentData);
+  }
+  async createStripPayment(paymentIntentData) {
+    // Use paymentIntent directly, do NOT destructure `data`
+    const stripPaymentData = {
+      transaction_id: paymentIntentData.id,
+     
+      user: { connect: { id: 1 } }, // <-- required, do NOT include userId,
+      amount: paymentIntentData.amount,
+      status: 'pending',
+      currency: paymentIntentData.currency,
+      
+       paid_at: paymentIntentData.status === "succeeded" ? new Date(paymentIntentData.created * 1000) : null,
+      invoice_number: paymentIntentData.id,
+
+    };
+
+    return await this.paymentRepository.createStripPayment(stripPaymentData);
   }
 
   async handlePaymentFailure(paymentIntent) {
     const { id, metadata } = paymentIntent;
-    
+
     // Update payment status in database
     return await this.paymentRepository.updatePaymentStatus(id, 'failed');
   }
