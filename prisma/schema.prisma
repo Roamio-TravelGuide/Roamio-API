@@ -29,9 +29,6 @@ model User {
   guides              TravelGuide?
   travelers           Traveler?
   vendor_profile      Vendor?      @relation("vendor_profile")
-  resetToken        String?   // For password reset token
-  resetTokenExpiry  DateTime? // For token expiry
-
  resetOTP        String?
  resetOTPExpiry  DateTime?
 

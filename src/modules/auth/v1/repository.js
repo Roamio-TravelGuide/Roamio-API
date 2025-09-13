@@ -112,8 +112,6 @@ class AuthRepository {
       data: {
         resetOTP: otp,
         resetOTPExpiry: expiry,
-        resetToken: null, // Clear any existing token
-        resetTokenExpiry: null,
       },
     });
   }
