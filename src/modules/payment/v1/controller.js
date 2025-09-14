@@ -35,6 +35,23 @@ export class PaymentController {
     }
   }
 
+  async getSoldPackagesCount(req,res){
+    try {
+      const soldPackageCount = await this.paymentService.getSoldPackagesCount();
+      res.status(200).json(
+        {
+          data:soldPackageCount,
+          message: "Sold packages count fetched successfully"
+        }
+      );
+    } catch (error) {
+      console.error("Sold packages count calculation error:", error);
+      res.status(500).json({
+        error: error.message || "Failed to calculate sold packages count",
+      });
+    }
+  }
+
   async getTopPerformerRevenue(req, res){
     try {
       const topPerformerRevenue = await this.paymentService.getTopPerformerRevenue();
@@ -107,9 +124,6 @@ export class PaymentController {
       res.status(500).json({ error: error.message });
     }
   }
-}
-
-  
   
   /*
   async handleWebhook(req, res) {
@@ -144,4 +158,11 @@ export class PaymentController {
     res.json({ received: true });
   }
     */
+}
+  
+  
+
+  
+  
+
 

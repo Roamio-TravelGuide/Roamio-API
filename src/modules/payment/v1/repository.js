@@ -99,6 +99,94 @@ export class PaymentRepository {
     }
   }
 
+  async getSoldPackagesCount() {
+  try {
+    // Get current date
+    const now = new Date();
+
+    // Get start of this week (Monday as start of week)
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + 1);
+    weekStart.setHours(0, 0, 0, 0);
+
+    // Get end of this week (Sunday)
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    // Queries in parallel
+    const [weekly, monthly, yearly] = await Promise.all([
+      // Weekly breakdown (last 7 days)
+      this.prisma.$queryRaw`
+        SELECT 
+          EXTRACT(DOW FROM paid_at) as day, 
+          COUNT(*)::int as total
+        FROM payment
+        WHERE status = 'completed'
+          AND paid_at BETWEEN ${weekStart} AND ${weekEnd}
+        GROUP BY day
+        ORDER BY day
+      `,
+
+      // Monthly breakdown (current year)
+      this.prisma.$queryRaw`
+        SELECT 
+          EXTRACT(MONTH FROM paid_at) as month,
+          COUNT(*)::int as total
+        FROM payment
+        WHERE status = 'completed'
+          AND EXTRACT(YEAR FROM paid_at) = EXTRACT(YEAR FROM NOW())
+        GROUP BY month
+        ORDER BY month
+      `,
+
+      // Yearly breakdown (all years)
+      this.prisma.$queryRaw`
+        SELECT 
+          EXTRACT(YEAR FROM paid_at) as year,
+          COUNT(*)::int as total
+        FROM payment
+        WHERE status = 'completed'
+        GROUP BY year
+        ORDER BY year
+      `,
+    ]);
+
+    // Format weekly (7 days, 0=Sunday → 6=Saturday)
+    const weeklyFormatted = Array(7).fill(0);
+    weekly.forEach((row) => {
+      weeklyFormatted[row.day] = Number(row.total);
+    });
+
+    // Format monthly (12 months)
+    const monthlyFormatted = Array(12).fill(0);
+    monthly.forEach((row) => {
+      monthlyFormatted[row.month - 1] = Number(row.total);
+    });
+
+    // Format yearly
+    const yearlyFormatted = yearly.map((row) => ({
+      year: Number(row.year),
+      total: Number(row.total),
+    }));
+
+    return {
+      weekly: weeklyFormatted,
+      monthly: monthlyFormatted,
+      yearly: yearlyFormatted,
+      as_of_date: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Package count calculation error:", {
+      error: error.message,
+      stack: error.stack,
+      prismaError: error.code,
+    });
+    throw new Error("Failed to calculate package counts. Please try again later.");
+  }
+}
+
+
   async getTopPerformerRevenue() {
     try {
       const result = await this.prisma.$queryRaw`
@@ -167,3 +255,6 @@ export class PaymentRepository {
     }
   }
 }
+
+}
+
