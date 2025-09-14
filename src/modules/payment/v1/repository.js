@@ -24,27 +24,6 @@ export class PaymentRepository {
     } catch (error) {
       console.error("Error fetching payment:", error);
       throw new Error("Failed to fetch payment");
-      
-    async getPayment(id) {
-        try {
-            const payment = await this.prisma.payment.findUnique({
-                where: { id },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true
-                        }
-                    }
-                }
-            });
-            return payment;
-        } catch (error) {
-            console.error('Error fetching payment:', error);
-            throw new Error('Failed to fetch payment');
-        }
-
     }
   }
 
@@ -120,6 +99,94 @@ export class PaymentRepository {
     }
   }
 
+  async getSoldPackagesCount() {
+  try {
+    // Get current date
+    const now = new Date();
+
+    // Get start of this week (Monday as start of week)
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + 1);
+    weekStart.setHours(0, 0, 0, 0);
+
+    // Get end of this week (Sunday)
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    // Queries in parallel
+    const [weekly, monthly, yearly] = await Promise.all([
+      // Weekly breakdown (last 7 days)
+      this.prisma.$queryRaw`
+        SELECT 
+          EXTRACT(DOW FROM paid_at) as day, 
+          COUNT(*)::int as total
+        FROM payment
+        WHERE status = 'completed'
+          AND paid_at BETWEEN ${weekStart} AND ${weekEnd}
+        GROUP BY day
+        ORDER BY day
+      `,
+
+      // Monthly breakdown (current year)
+      this.prisma.$queryRaw`
+        SELECT 
+          EXTRACT(MONTH FROM paid_at) as month,
+          COUNT(*)::int as total
+        FROM payment
+        WHERE status = 'completed'
+          AND EXTRACT(YEAR FROM paid_at) = EXTRACT(YEAR FROM NOW())
+        GROUP BY month
+        ORDER BY month
+      `,
+
+      // Yearly breakdown (all years)
+      this.prisma.$queryRaw`
+        SELECT 
+          EXTRACT(YEAR FROM paid_at) as year,
+          COUNT(*)::int as total
+        FROM payment
+        WHERE status = 'completed'
+        GROUP BY year
+        ORDER BY year
+      `,
+    ]);
+
+    // Format weekly (7 days, 0=Sunday → 6=Saturday)
+    const weeklyFormatted = Array(7).fill(0);
+    weekly.forEach((row) => {
+      weeklyFormatted[row.day] = Number(row.total);
+    });
+
+    // Format monthly (12 months)
+    const monthlyFormatted = Array(12).fill(0);
+    monthly.forEach((row) => {
+      monthlyFormatted[row.month - 1] = Number(row.total);
+    });
+
+    // Format yearly
+    const yearlyFormatted = yearly.map((row) => ({
+      year: Number(row.year),
+      total: Number(row.total),
+    }));
+
+    return {
+      weekly: weeklyFormatted,
+      monthly: monthlyFormatted,
+      yearly: yearlyFormatted,
+      as_of_date: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Package count calculation error:", {
+      error: error.message,
+      stack: error.stack,
+      prismaError: error.code,
+    });
+    throw new Error("Failed to calculate package counts. Please try again later.");
+  }
+}
+
+
   async getTopPerformerRevenue() {
     try {
       const result = await this.prisma.$queryRaw`
@@ -160,151 +227,31 @@ export class PaymentRepository {
       throw new Error("Failed to fetch top performer");
     }
   }
-
   async getTopSellingPackage() {
     try {
       const result = await this.prisma.$queryRaw`
-        WITH PackageSales AS (
-          SELECT
-            p.package_id,
-            COUNT(p.package_id) as sales_count
-          FROM "payment" p
-          WHERE p.status = 'completed' AND p.package_id IS NOT NULL
-          GROUP BY p.package_id
-        ),
-        RankedSales AS (
-          SELECT
-            ps.package_id,
-            ps.sales_count,
-            RANK() OVER (ORDER BY ps.sales_count DESC) as sales_rank
-          FROM PackageSales ps
-        )
         SELECT
           tp.id,
           tp.title,
-          rs.sales_count::int,
-          (SELECT SUM(p.amount) FROM "payment" p WHERE p.package_id = tp.id AND p.status = 'completed')::float as total_revenue
-        FROM RankedSales rs
-        JOIN "tour_package" tp ON rs.package_id = tp.id
-        WHERE rs.sales_rank = 1
+          COUNT(p.package_id)::int as sales_count,
+          SUM(p.amount)::float as total_revenue
+        FROM "payment" p
+        JOIN "tour_package" tp ON p.package_id = tp.id
+        WHERE p.status = 'completed' AND p.package_id IS NOT NULL
+        GROUP BY tp.id, tp.title
+        ORDER BY sales_count DESC
+        LIMIT 1
       `;
 
       if (result.length === 0) {
-        return []; // No packages sold
+        return null; // No packages sold
       }
 
-      console.log("Top Selling Package(s):", result);
-      return result;
+      console.log("Top Selling Package:", result[0]);
+      return result[0];
     } catch (error) {
       console.error("Error fetching top selling package:", error);
       throw new Error("Failed to fetch top selling package");
     }
   }
-}
-
-    async createPayment(paymentData) {
-        try {
-            return await this.prisma.payment.create({
-                data: paymentData
-            });
-        } catch (error) {
-            console.error('Error creating payment:', error);
-            throw new Error('Failed to create payment');
-        }
-    }
-    async createStripPayment(paymentData) {
-       
-        try {
-            return await this.prisma.payment.create({
-                data: paymentData
-            });
-        } catch (error) {
-            console.error('Error creating payment:', error);
-            throw new Error(error);
-        }
-    }
-    async updatePaymentStatus(paymentIntentId, status) {
-        try {
-            return await this.prisma.payment.update({
-                where: { transaction_id },
-                data: { status }
-            });
-        } catch (error) {
-            console.error('Error updating payment status:', error);
-            throw new Error('Failed to update payment status');
-        }
-    }
-
-    async getTotalRevenue() {
-        try {
-            // Get current date range for today's revenue
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0); // Start of today
-
-            const todayEnd = new Date();
-            todayEnd.setHours(23, 59, 59, 999); // End of today
-
-            // Get all metrics in parallel for better performance
-            const [total, today, monthly, sold_packages] = await Promise.all([
-                // Total completed revenue
-                this.prisma.payment.aggregate({
-                    _sum: { amount: true },
-                    where: { status: 'succeeded' }
-                }),
-
-                // Today's revenue
-                this.prisma.payment.aggregate({
-                    _sum: { amount: true },
-                    where: {
-                        status: 'succeeded',
-                        createdAt: {
-                            gte: todayStart,
-                            lte: todayEnd
-                        }
-                    }
-                }),
-
-                // Monthly breakdown
-                this.prisma.$queryRaw`
-                    SELECT 
-                        EXTRACT(MONTH FROM "createdAt") as month,
-                        SUM(amount) as total
-                    FROM "Payment"
-                    WHERE status = 'succeeded'
-                    AND EXTRACT(YEAR FROM "createdAt") = EXTRACT(YEAR FROM NOW())
-                    GROUP BY month
-                    ORDER BY month
-                `,
-                // Count of completed packages
-                this.prisma.payment.count({
-                    where: { status: 'succeeded' }
-                })
-            ]);
-
-            // Format monthly data
-            const monthlyFormatted = Array(12).fill(0);
-            monthly.forEach(row => {
-                monthlyFormatted[row.month - 1] = Number(row.total);
-            });
-
-            return {
-                sold_packages: sold_packages,
-                total_revenue: total._sum.amount || 0,
-                today_revenue: today._sum.amount || 0,
-                monthly: monthlyFormatted,
-                weekly: Array(4).fill(0),
-                yearly: [],
-                growth_rate: 0,
-                as_of_date: new Date().toISOString()
-            };
-
-        } catch (error) {
-            console.error("Revenue calculation error:", {
-                error: error.message,
-                stack: error.stack,
-                prismaError: error.code
-            });
-            throw new Error('Failed to calculate revenue. Please try again later.');
-        }
-    }
 }
