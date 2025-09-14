@@ -49,4 +49,21 @@ export class PaymentController {
       });
     }
   }
+
+  async getTopSellingPackage(req, res){
+    try {
+      const topSellingPackage = await this.paymentService.getTopSellingPackage();
+      res.status(200).json(
+        {
+          data: topSellingPackage,
+          message: "Top selling package fetched successfully"
+        }
+      );
+    } catch (error) {
+      console.error("Top performer revenue calculation error:", error);
+      res.status(500).json({
+        error: error.message || "Failed to calculate top performer revenue",
+      });
+    }
+  }
 }
