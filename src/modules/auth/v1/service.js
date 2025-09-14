@@ -51,6 +51,7 @@ class AuthService {
       loginData.password,
       user.password_hash
     );
+
     if (!isPasswordValid) throw new Error("Invalid credentials");
 
     const token = generateToken({

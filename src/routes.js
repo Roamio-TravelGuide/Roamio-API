@@ -6,6 +6,7 @@ import supportRoutes from './modules/support/v1/route.js';
 import paymentRoutes from './modules/payment/v1/route.js';
 import userRoutes from './modules/users/v1/route.js';
 import storageRoutes from './modules/storage/v1/route.js';
+import hiddenGemRoutes from './modules/hiddenGem/v1/route.js';
 
 const router = Router();
 
@@ -22,6 +23,9 @@ router.use('/storage', storageRoutes);
 router.use('/vendor', vendorRoutes);
 router.use('/support', supportRoutes);
 router.use('/support', supportRoutes);
+
+router.use('/hiddenGem',hiddenGemRoutes)
+
 router.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
