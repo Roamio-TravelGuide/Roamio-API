@@ -74,6 +74,7 @@ export class PaymentController {
       res.status(500).json({ error: error.message });
     }
   }
+  /*
   async handleWebhook(req, res) {
     const sig = req.headers['stripe-signature'];
     let event;
@@ -105,4 +106,5 @@ export class PaymentController {
 
     res.json({ received: true });
   }
+    */
 }

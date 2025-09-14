@@ -20,8 +20,9 @@ router.post("/create-strip-payment", (req, res) =>
 
 );
 // Webhook (Stripe doesn't use auth)
+/*
 router.post("/webhook", (req, res) =>
   paymentController.handleWebhook(req, res)
 );
-
+*/
 export default router;
