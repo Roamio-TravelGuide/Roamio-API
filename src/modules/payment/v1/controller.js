@@ -68,8 +68,6 @@ export class PaymentController {
       });
     }
   }
-}
-
   async createPaymentIntent(req, res) {
     try {
       const { amount, currency = 'usd', metadata = {} } = req.body;
@@ -109,6 +107,10 @@ export class PaymentController {
       res.status(500).json({ error: error.message });
     }
   }
+}
+
+  
+  
   /*
   async handleWebhook(req, res) {
     const sig = req.headers['stripe-signature'];
@@ -142,5 +144,4 @@ export class PaymentController {
     res.json({ received: true });
   }
     */
-}
 
