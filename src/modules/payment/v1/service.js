@@ -18,6 +18,16 @@ export class PaymentService {
   async getTotalRevenue() {
     return this.paymentRepository.getTotalRevenue();
   }
+  
+  async getTopPerformerRevenue(){
+    return this.paymentRepository.getTopPerformerRevenue();
+  }
+
+  async getTopSellingPackage(){
+    return this.paymentRepository.getTopSellingPackage();
+  }
+}
+
   async ensureStripeCustomer(userId) {
     const vendor = await prisma.vendor.findUnique({
       where: { user_id: userId },
@@ -87,3 +97,4 @@ export class PaymentService {
     return await this.paymentRepository.updatePaymentStatus(id, 'failed');
   }
 }
+

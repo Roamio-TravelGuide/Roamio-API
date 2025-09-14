@@ -35,6 +35,41 @@ export class PaymentController {
     }
   }
 
+  async getTopPerformerRevenue(req, res){
+    try {
+      const topPerformerRevenue = await this.paymentService.getTopPerformerRevenue();
+      res.status(200).json(
+        {
+          data: topPerformerRevenue,
+          message: "Top performer revenue fetched successfully"
+        }
+      );
+    } catch (error) {
+      console.error("Top performer revenue calculation error:", error);
+      res.status(500).json({
+        error: error.message || "Failed to calculate top performer revenue",
+      });
+    }
+  }
+
+  async getTopSellingPackage(req, res){
+    try {
+      const topSellingPackage = await this.paymentService.getTopSellingPackage();
+      res.status(200).json(
+        {
+          data: topSellingPackage,
+          message: "Top selling package fetched successfully"
+        }
+      );
+    } catch (error) {
+      console.error("Top performer revenue calculation error:", error);
+      res.status(500).json({
+        error: error.message || "Failed to calculate top performer revenue",
+      });
+    }
+  }
+}
+
   async createPaymentIntent(req, res) {
     try {
       const { amount, currency = 'usd', metadata = {} } = req.body;
@@ -108,3 +143,4 @@ export class PaymentController {
   }
     */
 }
+
