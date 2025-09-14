@@ -139,4 +139,31 @@ export class PaymentRepository {
       throw new Error("Failed to fetch top performer");
     }
   }
+  async getTopSellingPackage() {
+    try {
+      const result = await this.prisma.$queryRaw`
+        SELECT
+          tp.id,
+          tp.title,
+          COUNT(p.package_id)::int as sales_count,
+          SUM(p.amount)::float as total_revenue
+        FROM "payment" p
+        JOIN "tour_package" tp ON p.package_id = tp.id
+        WHERE p.status = 'completed' AND p.package_id IS NOT NULL
+        GROUP BY tp.id, tp.title
+        ORDER BY sales_count DESC
+        LIMIT 1
+      `;
+
+      if (result.length === 0) {
+        return null; // No packages sold
+      }
+
+      console.log("Top Selling Package:", result[0]);
+      return result[0];
+    } catch (error) {
+      console.error("Error fetching top selling package:", error);
+      throw new Error("Failed to fetch top selling package");
+    }
+  }
 }
