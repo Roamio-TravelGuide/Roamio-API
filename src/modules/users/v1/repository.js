@@ -64,4 +64,124 @@ export class UserRepository {
             throw new Error('Failed to update user status');
         }
     }
+
+    async getGuideProfile(userId) {
+        try {
+            const guideProfile = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone_no: true,
+                    bio: true,
+                    profile_picture_url: true,
+                    last_login: true,
+                    status: true,
+                    guides: {
+                        select: {
+                            id: true,
+                            years_of_experience: true,
+                            languages_spoken: true,
+                            tour_packages: {
+                                select: {
+                                    id: true,
+                                    status: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            return guideProfile;
+        } catch (error) {
+            console.error('Error fetching guide profile:', error);
+            throw new Error('Failed to fetch guide profile');
+        }
+    }
+
+    async getGuidePerformance(userId) {
+        try {
+            // Get tour packages count
+            const toursConducted = await this.prisma.tourPackage.count({
+                where: {
+                    guide_id: userId,
+                    status: 'published'
+                }
+            });
+
+            // Get reviews and calculate rating
+            const reviews = await this.prisma.review.findMany({
+                where: {
+                    package: {
+                        guide_id: userId
+                    }
+                },
+                select: {
+                    rating: true
+                }
+            });
+
+            const rating = reviews.length > 0 
+                ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+                : 0;
+
+            // Get total earnings
+            const payments = await this.prisma.payment.findMany({
+                where: {
+                    package: {
+                        guide_id: userId
+                    },
+                    status: 'completed'
+                },
+                select: {
+                    amount: true
+                }
+            });
+
+            const totalEarnings = payments.reduce((sum, payment) => sum + payment.amount, 0);
+
+            // Calculate response rate (this would need more complex logic based on actual response data)
+            const responseRate = 98; // Placeholder
+
+            return {
+                rating: parseFloat(rating.toFixed(1)),
+                reviewsCount: reviews.length,
+                toursConducted,
+                totalEarnings,
+                responseRate,
+                avgResponseTime: 2 // Placeholder
+            };
+        } catch (error) {
+            console.error('Error fetching guide performance:', error);
+            throw new Error('Failed to fetch guide performance');
+        }
+    }
+
+    async getGuideDocuments(userId) {
+        try {
+            // In your schema, documents are stored in the travel_guide table as verification_documents
+            // This would need to be adjusted based on how you're actually storing documents
+            const guide = await this.prisma.travelGuide.findUnique({
+                where: { user_id: userId },
+                select: {
+                    verification_documents: true
+                }
+            });
+
+            // Convert the documents string array to a structured format
+            const documents = guide?.verification_documents.map((doc, index) => ({
+                id: index,
+                name: `Document ${index + 1}`,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Pending' // This would need actual verification logic
+            })) || [];
+
+            return documents;
+        } catch (error) {
+            console.error('Error fetching guide documents:', error);
+            throw new Error('Failed to fetch guide documents');
+        }
+    }
 }
