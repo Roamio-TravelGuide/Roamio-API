@@ -12,4 +12,16 @@ export class UserService {
     async updateUserStatus(userId, status) {
         return this.userRepository.updateUserStatus(userId, status);
     }
+
+    async getGuideProfile(userId){
+        return this.userRepository.getGuideProfile(userId);
+    }
+
+    async getGuidePerformance(userId){
+        return this.userRepository.getGuidePerformance(userId);
+    }
+
+    async getGuideDocuments(userId) {
+        return this.userRepository.getGuideDocuments(userId);
+    }
 }

@@ -83,4 +83,62 @@ export class UserController {
             });
         }
     }
+
+
+    async getGuideProfile(req, res) {
+        try {
+            const { userId } = req.params;
+            const profile = await this.userService.getGuideProfile(parseInt(userId));
+            
+            res.status(200).json({
+                success: true,
+                data: profile
+            });
+        } catch (error) {
+            console.error('Error fetching guide profile:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch guide profile',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    }
+
+    async getGuidePerformance(req, res) {
+        try {
+            const {userId} = req.params;
+            const performance = await this.userService.getGuidePerformance(parseInt(userId));
+            
+            res.status(200).json({
+                success: true,
+                data: performance
+            });
+        } catch (error) {
+            console.error('Error fetching guide performance:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch guide performance',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    }
+
+    async getGuideDocuments(req, res) {
+        try {
+            const {userId} = req.params;
+            const documents = await this.userService.getGuideDocuments(parseInt(userId));
+            
+            res.status(200).json({
+                success: true,
+                data: documents
+            });
+        } catch (error) {
+            console.error('Error fetching guide documents:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch guide documents',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    }
 }
