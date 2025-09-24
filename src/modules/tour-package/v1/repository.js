@@ -1,5 +1,5 @@
 import prisma from "../../../database/connection.js";
-import { StorageRepository } from '../../storage/v1/repository.js';
+// import { StorageRepository } from '../../storage/v1/repository.js';
 
 class TourPackageRepository {
   async findMany(filters) {
@@ -204,20 +204,21 @@ class TourPackageRepository {
     try {
       const guide = await prisma.travelGuide.findUnique({
         where: {
-          user_id: parseInt(guideId),
+          id: parseInt(guideId),  // Use id instead of user_id
         },
         select: {
           id: true,
+          user_id: true,  // Also get user_id if needed
         },
       });
-
-      const where = {
-        guide_id: guide.id,
-      };
 
       if (!guide) {
         return { packages: [], total: 0 };
       }
+
+      const where = {
+        guide_id: parseInt(guideId),  // Directly use the guideId
+      };
 
       if (filters.status && filters.status !== "all") {
         where.status = filters.status;
@@ -278,79 +279,6 @@ class TourPackageRepository {
       throw error;
     }
   }
-
-  // async findByGuideId(guideId, filters = {}) {
-  //   try {
-  //     const guide = await prisma.travelGuide.findUnique({
-  //       where: {
-  //         user_id: parseInt(guideId),
-  //       },
-  //       select: {
-  //         id: true,
-  //       },
-  //     });
-
-  //     const where = {
-  //       guide_id: guide.id,
-  //     };
-
-  //     if (!guide) {
-  //       return { packages: [], total: 0 };
-  //     }
-
-  //     if (filters.status && filters.status !== "all") {
-  //       where.status = filters.status;
-  //     }
-
-  //     if (filters.search) {
-  //       where.OR = [
-  //         { title: { contains: filters.search, mode: "insensitive" } },
-  //         { description: { contains: filters.search, mode: "insensitive" } },
-  //       ];
-  //     }
-
-  //     const [packages, total] = await Promise.all([
-  //       prisma.tourPackage.findMany({
-  //         where,
-  //         include: {
-  //           guide: {
-  //             include: {
-  //               user: {
-  //                 select: {
-  //                   name: true,
-  //                   profile_picture_url: true,
-  //                 },
-  //               },
-  //             },
-  //           },
-  //           cover_image: {
-  //             select: {
-  //               url: true,
-  //             },
-  //           },
-  //           tour_stops: {
-  //             include: {
-  //               location: {
-  //                 select: {
-  //                   city: true,
-  //                 },
-  //               },
-  //             },
-  //           },
-  //         },
-  //         orderBy: { created_at: "desc" },
-  //         skip: (filters.page - 1) * filters.limit,
-  //         take: filters.limit,
-  //       }),
-  //       prisma.tourPackage.count({ where }),
-  //     ]);
-
-  //     return { packages, total };
-  //   } catch (error) {
-  //     console.error("findByGuideId repository error:", error.message);
-  //     throw error;
-  //   }
-  // }
 
 async updateTourPackage(id, updateData) {
   const { tour = {}, ...restData } = updateData;
@@ -493,36 +421,6 @@ async updateTourPackage(id, updateData) {
     }
   }
 
-  prepareMediaUpdates(mediaAttributes) {
-    const updates = {
-      deleteMany: {}, // This will delete all existing media associations
-      create: [],
-      connect: []
-    };
-
-    mediaAttributes.forEach(media => {
-      if (media.id && media.keep === "true") {
-        updates.connect.push({ media_id: parseInt(media.id) });
-      } else if (media.file || media.temp_id) {
-        updates.create.push({
-          media: {
-            create: {
-              url: media.url || '',
-              s3_key: media.s3_key || '',
-              media_type: media.media_type,
-              duration_seconds: parseInt(media.duration_seconds) || 0,
-              uploaded_by_id: parseInt(media.uploaded_by_id) || 1,
-              file_size: parseInt(media.file_size) || 0,
-              format: media.format || ''
-            }
-          }
-        });
-      }
-    });
-
-    return updates;
-  }
-
   async deleteTourPackage(id) {
     try {
       const packageId = parseInt(id);
@@ -638,359 +536,6 @@ async updateTourPackage(id, updateData) {
       throw new Error(`Failed to delete tour package: ${error.message}`);
     }
   }
-
-  // async updateTour(id, updateData) {
-  //   try {
-  //     const tour = await prisma.tourPackage.findUnique({
-  //       where: { id: parseInt(id) },
-  //       select: {
-  //         guide: {
-  //           select: {
-  //             user_id: true
-  //           }
-  //         }
-  //       }
-  //     });
-
-  //     if (!tour || !tour.guide) {
-  //       throw new Error('Tour package or guide not found');
-  //     }
-
-  //     const uploaderId = tour.guide.user_id;
-
-  //     await Promise.all(updateData.tour_stops.map(async (stop) => {
-  //       if (stop.media) {
-  //         await Promise.all(stop.media.map(async (media) => {
-  //           if (!media.id && media.url) {
-  //             // Check if media exists
-  //             const existingMedia = await prisma.media.findUnique({
-  //               where: { url: media.url }
-  //             });
-
-  //             if (existingMedia) {
-  //               media.id = existingMedia.id;
-  //             } else {
-  //               // Create new media with guide's user_id as uploader
-  //               const newMedia = await prisma.media.create({
-  //                 data: {
-  //                   url: media.url,
-  //                   s3_key: media.key || media.s3_key || '',
-  //                   media_type: media.media_type,
-  //                   duration_seconds: media.duration_seconds || null,
-  //                   file_size: media.file_size || null,
-  //                   format: media.format || null,
-  //                   uploaded_by_id: uploaderId
-  //                 }
-  //               });
-  //               media.id = newMedia.id;
-  //             }
-  //           }
-  //         }));
-  //       }
-  //     }));
-
-  //     return await prisma.tourPackage.update({
-  //       where: { id: parseInt(id) },
-  //       data: {
-  //         title: updateData.title,
-  //         description: updateData.description,
-  //         price: updateData.price,
-  //         duration_minutes: updateData.duration_minutes,
-  //         status: updateData.status,
-  //         rejection_reason: updateData.rejection_reason,
-  //         updated_at: new Date(),
-  //         ...(updateData.cover_image_id && { 
-  //           cover_image: { connect: { id: updateData.cover_image_id } }
-  //         }),
-  //         tour_stops: {
-  //           deleteMany: {
-  //             id: {
-  //               notIn: updateData.tour_stops
-  //                 .filter(stop => stop.id)
-  //                 .map(stop => stop.id)
-  //             }
-  //           },
-  //           upsert: updateData.tour_stops.map(stop => ({
-  //             where: { id: stop.id || -1 },
-  //             update: {
-  //               sequence_no: stop.sequence_no,
-  //               stop_name: stop.stop_name,
-  //               description: stop.description,
-  //               ...(stop.location && {
-  //                 location: {
-  //                   upsert: {
-  //                     create: {
-  //                       latitude: stop.location.latitude,
-  //                       longitude: stop.location.longitude,
-  //                       address: stop.location.address,
-  //                       city: stop.location.city,
-  //                       province: stop.location.province,
-  //                       district: stop.location.district,
-  //                       postal_code: stop.location.postal_code
-  //                     },
-  //                     update: {
-  //                       latitude: stop.location.latitude,
-  //                       longitude: stop.location.longitude,
-  //                       address: stop.location.address,
-  //                       city: stop.location.city,
-  //                       province: stop.location.province,
-  //                       district: stop.location.district,
-  //                       postal_code: stop.location.postal_code
-  //                     }
-  //                   }
-  //                 }
-  //               }),
-  //               media: stop.media ? {
-  //                 deleteMany: { stop_id: stop.id },
-  //                 create: stop.media.map(media => ({
-  //                   media_id: media.id
-  //                 }))
-  //               } : undefined
-  //             },
-  //             create: {
-  //               sequence_no: stop.sequence_no,
-  //               stop_name: stop.stop_name,
-  //               description: stop.description,
-  //               ...(stop.location && {
-  //                 location: {
-  //                   create: {
-  //                     latitude: stop.location.latitude,
-  //                     longitude: stop.location.longitude,
-  //                     address: stop.location.address,
-  //                     city: stop.location.city,
-  //                     province: stop.location.province,
-  //                     district: stop.location.district,
-  //                     postal_code: stop.location.postal_code
-  //                   }
-  //                 }
-  //               }),
-  //               ...(stop.media && {
-  //                 media: {
-  //                   create: stop.media.map(media => ({
-  //                     media_id: media.id
-  //                   }))
-  //                 }
-  //               })
-  //             }
-  //           }))
-  //         }
-  //       },
-  //       include: {
-  //         guide: {
-  //           include: {
-  //             user: true
-  //           }
-  //         },
-  //         cover_image: true,
-  //         tour_stops: {
-  //           include: {
-  //             location: true,
-  //             media: {
-  //               include: {
-  //                 media: true
-  //               }
-  //             }
-  //           },
-  //           orderBy: { sequence_no: 'asc' }
-  //         }
-  //       }
-  //     });
-  //   } catch (error) {
-  //     console.error('Tour update error:', error);
-  //     throw new Error(`Failed to update tour: ${error.message}`);
-  //   }
-  // }
-
-  // async updateTour(id, updateData) {
-  //   try {
-  //     const tour = await prisma.tourPackage.findUnique({
-  //       where: { id: parseInt(id) },
-  //       select: {
-  //         guide: {
-  //           select: {
-  //             user_id: true
-  //           }
-  //         }
-  //       }
-  //     });
-
-  //     if (!tour || !tour.guide) {
-  //       throw new Error('Tour package or guide not found');
-  //     }
-
-  //     const uploaderId = tour.guide.user_id;
-
-  //     // Handle cover image if present
-  //     let coverImageId = updateData.cover_image_id;
-  //     if (updateData.cover_image && !coverImageId) {
-  //       const coverImageData = updateData.cover_image;
-        
-  //       // Check if media exists with this URL
-  //       const existingMedia = await prisma.media.findUnique({
-  //         where: { url: coverImageData.url }
-  //       });
-
-  //       if (existingMedia) {
-  //         coverImageId = existingMedia.id;
-  //       } else {
-  //         // Create new media record for cover image
-  //         const newMedia = await prisma.media.create({
-  //           data: {
-  //             url: coverImageData.url,
-  //             s3_key: coverImageData.s3_key || '',
-  //             media_type: coverImageData.media_type || 'image',
-  //             file_size: coverImageData.file_size ? BigInt(coverImageData.file_size) : null,
-  //             format: coverImageData.format || null,
-  //             uploaded_by_id: uploaderId
-  //           }
-  //         });
-  //         coverImageId = newMedia.id;
-  //       }
-  //     }
-
-  //     // Process tour stop media
-  //     await Promise.all(updateData.tour_stops.map(async (stop) => {
-  //       if (stop.media) {
-  //         await Promise.all(stop.media.map(async (media) => {
-  //           if (!media.id && media.url) {
-  //             // Check if media exists
-  //             const existingMedia = await prisma.media.findUnique({
-  //               where: { url: media.url }
-  //             });
-
-  //             if (existingMedia) {
-  //               media.id = existingMedia.id;
-  //             } else {
-  //               // Create new media with guide's user_id as uploader
-  //               const newMedia = await prisma.media.create({
-  //                 data: {
-  //                   url: media.url,
-  //                   s3_key: media.key || media.s3_key || '',
-  //                   media_type: media.media_type,
-  //                   duration_seconds: media.duration_seconds || null,
-  //                   file_size: media.file_size ? BigInt(media.file_size) : null,
-  //                   format: media.format || null,
-  //                   uploaded_by_id: uploaderId
-  //                 }
-  //               });
-  //               media.id = newMedia.id;
-  //             }
-  //           }
-  //         }));
-  //       }
-  //     }));
-
-  //     return await prisma.tourPackage.update({
-  //       where: { id: parseInt(id) },
-  //       data: {
-  //         title: updateData.title,
-  //         description: updateData.description,
-  //         price: updateData.price,
-  //         duration_minutes: updateData.duration_minutes,
-  //         status: updateData.status,
-  //         rejection_reason: updateData.rejection_reason,
-  //         updated_at: new Date(),
-  //         ...(coverImageId && { 
-  //           cover_image_id: coverImageId
-  //         }),
-  //         tour_stops: {
-  //           deleteMany: {
-  //             id: {
-  //               notIn: updateData.tour_stops
-  //                 .filter(stop => stop.id)
-  //                 .map(stop => stop.id)
-  //             }
-  //           },
-  //           upsert: updateData.tour_stops.map(stop => ({
-  //             where: { id: stop.id || -1 },
-  //             update: {
-  //               sequence_no: stop.sequence_no,
-  //               stop_name: stop.stop_name,
-  //               description: stop.description,
-  //               ...(stop.location && {
-  //                 location: {
-  //                   upsert: {
-  //                     create: {
-  //                       latitude: stop.location.latitude,
-  //                       longitude: stop.location.longitude,
-  //                       address: stop.location.address,
-  //                       city: stop.location.city,
-  //                       province: stop.location.province,
-  //                       district: stop.location.district,
-  //                       postal_code: stop.location.postal_code
-  //                     },
-  //                     update: {
-  //                       latitude: stop.location.latitude,
-  //                       longitude: stop.location.longitude,
-  //                       address: stop.location.address,
-  //                       city: stop.location.city,
-  //                       province: stop.location.province,
-  //                       district: stop.location.district,
-  //                       postal_code: stop.location.postal_code
-  //                     }
-  //                   }
-  //                 }
-  //               }),
-  //               media: stop.media ? {
-  //                 deleteMany: { stop_id: stop.id },
-  //                 create: stop.media.map(media => ({
-  //                   media_id: media.id
-  //                 }))
-  //               } : undefined
-  //             },
-  //             create: {
-  //               sequence_no: stop.sequence_no,
-  //               stop_name: stop.stop_name,
-  //               description: stop.description,
-  //               ...(stop.location && {
-  //                 location: {
-  //                   create: {
-  //                     latitude: stop.location.latitude,
-  //                     longitude: stop.location.longitude,
-  //                     address: stop.location.address,
-  //                     city: stop.location.city,
-  //                     province: stop.location.province,
-  //                     district: stop.location.district,
-  //                     postal_code: stop.location.postal_code
-  //                   }
-  //                 }
-  //               }),
-  //               ...(stop.media && {
-  //                 media: {
-  //                   create: stop.media.map(media => ({
-  //                     media_id: media.id
-  //                   }))
-  //                 }
-  //               })
-  //             }
-  //           }))
-  //         }
-  //       },
-  //       include: {
-  //         guide: {
-  //           include: {
-  //             user: true
-  //           }
-  //         },
-  //         cover_image: true,
-  //         tour_stops: {
-  //           include: {
-  //             location: true,
-  //             media: {
-  //               include: {
-  //                 media: true
-  //               }
-  //             }
-  //           },
-  //           orderBy: { sequence_no: 'asc' }
-  //         }
-  //       }
-  //     });
-  //   } catch (error) {
-  //     console.error('Tour update error:', error);
-  //     throw new Error(`Failed to update tour: ${error.message}`);
-  //   }
-  // }
 
   async updateTour(id, updateData) {
     try {
@@ -1235,6 +780,247 @@ async updateTourPackage(id, updateData) {
       throw new Error(`Failed to update tour: ${error.message}`);
     }
   }
+
+
+async getTourByIdRepository(tourId, tx = prisma){
+  return await tx.tourPackage.findUnique({
+    where: { id: tourId },
+    include: {
+      tour_stops: {
+        include: {
+          location: true,
+          media: {
+            include: {
+              media: true
+            }
+          }
+        },
+        orderBy: {
+          sequence_no: 'asc'
+        }
+      },
+      cover_image: true,
+      guide: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              profile_picture_url: true
+            }
+          }
+        }
+      }
+    }
+  });
+};
+
+
+
+async createInitialTourPackage(tourData) {
+  try {
+    // Validate required fields
+    if (!tourData.title || !tourData.guide_id || !tourData.price) {
+      throw new Error('Missing required fields: title, guide_id, and price are required');
+    }
+
+    console.log(tourData);
+
+    const tour = await prisma.tourPackage.create({
+      data: {
+        title: tourData.title,
+        description: tourData.description || null, // Ensure null if undefined
+        price: parseFloat(tourData.price), // Ensure it's a number
+        duration_minutes: parseInt(tourData.duration_minutes) || 0,
+        status: tourData.status || 'pending_approval',
+        guide_id: parseInt(tourData.guide_id),
+      },
+    });
+    return tour;
+  } catch (error) {
+    throw new Error(`Failed to create initial tour package: ${error.message}`);
+  }
+}
+
+  // Create media record
+  async createMedia(mediaData) {
+  try {
+    // Validate required fields
+    if (!mediaData.url || !mediaData.media_type || !mediaData.uploaded_by_id) {
+      throw new Error('Missing required media fields: url, media_type, uploaded_by_id');
+    }
+
+    const media = await prisma.media.create({
+      data: {
+        url: mediaData.url,
+        media_type: mediaData.media_type,
+        uploaded_by_id: mediaData.uploaded_by_id,
+        file_size: mediaData.file_size || null,
+        format: mediaData.format || null,
+        duration_seconds: mediaData.duration_seconds || null,
+        width: mediaData.width || null,
+        height: mediaData.height || null,
+        bitrate: mediaData.bitrate || null,
+        sample_rate: mediaData.sample_rate || null,
+      },
+    });
+    return media;
+  } catch (error) {
+    // More specific error message
+    if (error.code === 'P2002') { // Unique constraint violation
+      throw new Error(`Media with URL ${mediaData.url} already exists`);
+    }
+    throw new Error(`Failed to create media record: ${error.message}`);
+  }
+}
+
+  // Update tour package with cover image media ID
+  async updateTourCover(tourId, coverMediaId) {
+    try {
+      const updatedTour = await prisma.tourPackage.update({
+        where: { id: tourId },
+        data: { cover_image_id: coverMediaId },
+      });
+      return updatedTour;
+    } catch (error) {
+      throw new Error(`Failed to update tour cover: ${error.message}`);
+    }
+  }
+
+  // Create tour stops with media relationships
+  async createTourStopsWithMedia({ tourId, stops, stopMediaUrls }) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      // Create locations sequentially to maintain order
+      const locations = [];
+      for (const stop of stops) {
+        const location = await tx.location.create({
+          data: {
+            longitude: stop.location.longitude,
+            latitude: stop.location.latitude,
+            address: stop.location.address || null,
+            city: stop.location.city || null,
+            postal_code: stop.location.postal_code || null,
+            district: stop.location.district || null,
+            province: stop.location.province || null,
+          },
+        });
+        locations.push(location);
+      }
+
+      // Create tour stops with their corresponding locations
+      const tourStops = [];
+      for (let i = 0; i < stops.length; i++) {
+        const stop = stops[i];
+        const location = locations[i];
+        
+        const tourStop = await tx.tourStop.create({
+          data: {
+            package_id: tourId,
+            sequence_no: stop.sequence_no,
+            stop_name: stop.stop_name,
+            description: stop.description || null,
+            location_id: location.id,
+          },
+        });
+        tourStops.push(tourStop);
+      }
+
+      // Create media relationships
+      const stopMediaRelations = [];
+      for (const [stopIndex, mediaArray] of Object.entries(stopMediaUrls)) {
+        const index = parseInt(stopIndex);
+        if (index >= 0 && index < tourStops.length && mediaArray.length > 0) {
+          const tourStop = tourStops[index];
+          
+          for (const mediaItem of mediaArray) {
+            stopMediaRelations.push(
+              tx.tourStopMedia.create({
+                data: {
+                  stop_id: tourStop.id,
+                  media_id: mediaItem.media_id,
+                },
+              })
+            );
+          }
+        }
+      }
+
+      if (stopMediaRelations.length > 0) {
+        await Promise.all(stopMediaRelations);
+      }
+
+      return {
+        tourId,
+        stopsCreated: tourStops.length,
+        mediaRelationsCreated: stopMediaRelations.length,
+      };
+    });
+  } catch (error) {
+    throw new Error(`Failed to create tour stops with media: ${error.message}`);
+  }
+}
+
+  // Get complete tour package by ID with all relationships
+  async getTourPackageById(tourId) {
+    try {
+      const tourPackage = await prisma.tourPackage.findUnique({
+        where: { id: tourId },
+        include: {
+          guide: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  profile_picture_url: true,
+                },
+              },
+            },
+          },
+          cover_image: true,
+          tour_stops: {
+            orderBy: {
+              sequence_no: 'asc',
+            },
+            include: {
+              location: true,
+              media: {
+                include: {
+                  media: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!tourPackage) {
+        throw new Error(`Tour package with ID ${tourId} not found`);
+      }
+
+      // Transform the media relationships to match the expected format
+      const transformedTour = {
+        ...tourPackage,
+        tour_stops: tourPackage.tour_stops.map(stop => ({
+          ...stop,
+          media: stop.media.map(rel => ({
+            ...rel.media,
+            type: rel.media.media_type,
+          })),
+        })),
+      };
+
+      return transformedTour;
+    } catch (error) {
+      throw new Error(`Failed to get tour package by ID: ${error.message}`);
+    }
+  }
+
+
+
+
+
 }
 
 const tourPackageRepository = new TourPackageRepository();

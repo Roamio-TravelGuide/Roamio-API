@@ -686,8 +686,7 @@ async function seedMedia(users) {
     data: [
       // Images
       {
-        url: "https://images.pexels.com/photos/3408744/pexels-photo-3408744.jpeg",
-        s3_key: "media/images/colombo_galle_face.jpg",
+        url: "/uploads/media/colombo_galle_face.jpg",
         media_type: "image",
         uploaded_by_id: users.guide1.id,
         file_size: BigInt(2048576),
@@ -696,8 +695,7 @@ async function seedMedia(users) {
         height: 1080,
       },
       {
-        url: "https://images.pexels.com/photos/2290753/pexels-photo-2290753.jpeg",
-        s3_key: "media/images/kandy_temple.jpg",
+        url: "/uploads/media/kandy_temple.jpg",
         media_type: "image",
         uploaded_by_id: users.guide2.id,
         file_size: BigInt(3145728),
@@ -706,8 +704,7 @@ async function seedMedia(users) {
         height: 1280,
       },
       {
-        url: "https://images.pexels.com/photos/1450360/pexels-photo-1450360.jpeg",
-        s3_key: "media/images/yala_wildlife.jpg",
+        url: "/uploads/media/yala_wildlife.jpg",
         media_type: "image",
         uploaded_by_id: users.guide3.id,
         file_size: BigInt(1572864),
@@ -716,8 +713,7 @@ async function seedMedia(users) {
         height: 853,
       },
       {
-        url: "https://images.pexels.com/photos/1007426/pexels-photo-1007426.jpeg",
-        s3_key: "media/images/sigiriya_rock.jpg",
+        url: "/uploads/media/sigiriya_rock.jpg",
         media_type: "image",
         uploaded_by_id: users.guide4.id,
         file_size: BigInt(2621440),
@@ -726,8 +722,7 @@ async function seedMedia(users) {
         height: 1280,
       },
       {
-        url: "https://images.pexels.com/photos/417074/pexels-photo-417074.jpeg",
-        s3_key: "media/images/ella_rock.jpg",
+        url: "/uploads/media/ella_rock.jpg",
         media_type: "image",
         uploaded_by_id: users.guide5.id,
         file_size: BigInt(1835008),
@@ -736,8 +731,7 @@ async function seedMedia(users) {
         height: 853,
       },
       {
-        url: "https://images.pexels.com/photos/2387793/pexels-photo-2387793.jpeg",
-        s3_key: "media/images/tea_plantation.jpg",
+        url: "/uploads/media/tea_plantation.jpg",
         media_type: "image",
         uploaded_by_id: users.guide6.id,
         file_size: BigInt(2097152),
@@ -747,8 +741,7 @@ async function seedMedia(users) {
       },
       // Audio files
       {
-        url: "https://example.com/media/temple_audio.mp3",
-        s3_key: "media/audio/temple_guide.mp3",
+        url: "/uploads/audio/temple_guide.mp3",
         media_type: "audio",
         duration_seconds: 300,
         uploaded_by_id: users.guide1.id,
@@ -758,8 +751,7 @@ async function seedMedia(users) {
         sample_rate: 44100,
       },
       {
-        url: "https://example.com/media/nature_sounds.mp3",
-        s3_key: "media/audio/nature_sounds.mp3",
+        url: "/uploads/audio/nature_sounds.mp3",
         media_type: "audio",
         duration_seconds: 450,
         uploaded_by_id: users.guide2.id,
@@ -769,8 +761,7 @@ async function seedMedia(users) {
         sample_rate: 44100,
       },
       {
-        url: "https://example.com/media/history_narration.mp3",
-        s3_key: "media/audio/history_narration.mp3",
+        url: "/uploads/audio/history_narration.mp3",
         media_type: "audio",
         duration_seconds: 600,
         uploaded_by_id: users.guide4.id,
@@ -780,8 +771,7 @@ async function seedMedia(users) {
         sample_rate: 44100,
       },
       {
-        url: "https://example.com/media/cultural_music.mp3",
-        s3_key: "media/audio/cultural_music.mp3",
+        url: "/uploads/audio/cultural_music.mp3",
         media_type: "audio",
         duration_seconds: 360,
         uploaded_by_id: users.guide5.id,
@@ -791,8 +781,7 @@ async function seedMedia(users) {
         sample_rate: 44100,
       },
       {
-        url: "https://example.com/media/wildlife_guide.mp3",
-        s3_key: "media/audio/wildlife_guide.mp3",
+        url: "/uploads/audio/wildlife_guide.mp3",
         media_type: "audio",
         duration_seconds: 480,
         uploaded_by_id: users.guide3.id,
@@ -802,8 +791,7 @@ async function seedMedia(users) {
         sample_rate: 44100,
       },
       {
-        url: "https://example.com/media/tea_plantation_guide.mp3",
-        s3_key: "media/audio/tea_plantation_guide.mp3",
+        url: "/uploads/audio/tea_plantation_guide.mp3",
         media_type: "audio",
         duration_seconds: 420,
         uploaded_by_id: users.guide6.id,

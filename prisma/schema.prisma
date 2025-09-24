@@ -19,6 +19,10 @@ model User {
   profile_picture_url String?
   bio                 String?
   status              UserStatus      @default(pending)
+  resetToken          String?
+  resetTokenExpiry    DateTime?
+  resetOTP            String?
+  resetOTPExpiry      DateTime?
   uploaded_media      Media[]         @relation("uploaded_media")
   payments            Payment[]
   vendor_pois         POI[]           @relation("vendor_pois")
@@ -28,10 +32,7 @@ model User {
   support_tickets     SupportTicket[] @relation("user_support_tickets")
   guides              TravelGuide?
   travelers           Traveler?
-  vendor_profile      Vendor?      @relation("vendor_profile")
- resetOTP        String?
- resetOTPExpiry  DateTime?
-
+  vendor_profile      Vendor?         @relation("vendor_profile")
 
   @@map("user")
 }
@@ -132,7 +133,6 @@ model Media {
   bitrate          Int?
   created_at       DateTime        @default(now())
   height           Int?
-  s3_key           String          @unique @default("")
   sample_rate      Int?
   width            Int?
   hidden_places    HiddenPlace[]
