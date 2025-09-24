@@ -4,7 +4,10 @@ import dotenv from 'dotenv';
 import routes from './routes.js';
 import { errorHandler } from './middleware/error.js';
 import path from "path";
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -29,10 +32,13 @@ app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
-app.use(
-  "/uploads",
-  express.static(path.join(process.cwd(), "public", "uploads"))
-);
+// app.use(
+//   "/uploads",
+//   express.static(path.join(process.cwd(), "public", "uploads"))
+// );
+
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+
 
 
 

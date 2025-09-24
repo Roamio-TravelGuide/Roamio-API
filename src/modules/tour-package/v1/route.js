@@ -3,17 +3,28 @@ import multer from 'multer';
 import tourPackageController from "./controller.js";
 
 const router = Router();
-const upload = multer();
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+  }
+});
+
+
+
+router.post('/complete', upload.any(), tourPackageController.createCompleteTourPackage);
 
 router.get('/', tourPackageController.getTourPackages);
-router.get('/statistics', tourPackageController.getTourPackageStatistics);
-router.get('/:id', tourPackageController.getTourPackageById);
-router.get('/guide/:guideId', tourPackageController.getTourPackagesByGuideId);
-router.post('/createTour', tourPackageController.createTourPackage);
-router.patch('/:id/status', tourPackageController.updateTourPackageStatus);
 
-router.post("/tour-stops/bulk", tourPackageController.createTourStops);
-router.post("/locations", tourPackageController.createLocation);
+router.get('/statistics', tourPackageController.getTourPackageStatistics);
+
+router.get('/:id', tourPackageController.getTourPackageById);
+
+router.get('/guide/:guideId', tourPackageController.getTourPackagesByGuideId);
+
+router.patch('/:id/status', tourPackageController.updateTourPackageStatus);
 
 router.delete('/:id' , tourPackageController.deleteTourPackage)
 

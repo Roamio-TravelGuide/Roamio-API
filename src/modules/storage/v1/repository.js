@@ -32,7 +32,7 @@ export class StorageRepository {
       }).finally(() => clearTimeout(timeout));
 
       if (onUploadProgress) {
-        onUploadProgress({ loaded: file.buffer.length, total: file.buffer.length });
+        // onUploadProgress({ loaded: file.buffer.length, total: file.buffer.length });
       }
 
       return { key };
