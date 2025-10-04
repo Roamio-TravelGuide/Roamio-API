@@ -1,12 +1,12 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from 'bcrypt';
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
 class AuthRepository {
   async findUserByEmail(email) {
-    return prisma.user.findUnique({ 
-      where: { email, status: 'active' },
+    return prisma.user.findUnique({
+      where: { email, status: "active" },
       select: {
         id: true,
         email: true,
@@ -26,8 +26,8 @@ class AuthRepository {
   async createUser(userData) {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-    const status = userData.role === 'traveler' ? 'active' : 'pending';
-    
+    const status = userData.role === "traveler" ? "active" : "pending";
+
     const baseUserData = {
       name: userData.name,
       email: userData.email,
@@ -35,8 +35,8 @@ class AuthRepository {
       role: userData.role,
       status: status,
       password_hash: hashedPassword,
-      profile_picture_url: userData.profile_picture_url || '',
-      bio: userData.bio || '',
+      profile_picture_url: userData.profile_picture_url || "",
+      bio: userData.bio || "",
     };
 
     return prisma.$transaction(async (prisma) => {
@@ -67,13 +67,67 @@ class AuthRepository {
           break;
 
         case "vendor":
+          // Resolve coordinates for the provided address if not supplied
+          let latitude = userData.latitude || 0;
+          let longitude = userData.longitude || 0;
+
+          // Only attempt geocoding if address is present and coords are missing/zero
+          if (userData.address && (!latitude || !longitude)) {
+            try {
+              const queryParts = [
+                userData.address,
+                userData.city,
+                userData.province,
+              ]
+                .filter(Boolean)
+                .join(", ");
+              // Restrict geocoding to Sri Lanka using countrycodes=lk and verify response
+              const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=lk&q=${encodeURIComponent(
+                queryParts
+              )}`;
+              const resp = await fetch(nominatimUrl, {
+                headers: {
+                  "User-Agent": "Roamio/1.0 (contact@roamio.example)",
+                },
+              });
+              if (resp.ok) {
+                const results = await resp.json();
+                if (Array.isArray(results) && results.length > 0) {
+                  const first = results[0];
+                  // Double-check Nominatim indicates Sri Lanka
+                  const inSriLanka =
+                    (first.address && first.address.country_code === "lk") ||
+                    (first.display_name &&
+                      first.display_name.toLowerCase().includes("sri lanka"));
+                  if (!inSriLanka) {
+                    throw new Error("Address not in Sri Lanka");
+                  }
+                  latitude = parseFloat(first.lat) || latitude;
+                  longitude = parseFloat(first.lon) || longitude;
+                }
+              } else {
+                console.warn(
+                  "Geocoding request failed",
+                  resp.status,
+                  resp.statusText
+                );
+              }
+            } catch (err) {
+              console.error("Geocoding error:", err);
+              // Fail signup for vendors if address is invalid / not in Sri Lanka
+              throw new Error(
+                "Vendor address must be a valid location in Sri Lanka"
+              );
+            }
+          }
+
           const location = await prisma.location.create({
             data: {
               address: userData.address,
-              city: userData.city || 'Unknown',
-              province: userData.province || 'Unknown',
-              latitude: userData.latitude || 0,
-              longitude: userData.longitude || 0,
+              city: userData.city || "Unknown",
+              province: userData.province || "Unknown",
+              latitude: latitude || 0,
+              longitude: longitude || 0,
             },
           });
 
@@ -105,8 +159,10 @@ class AuthRepository {
 
   // Save password reset OTP and expiry
   async savePasswordResetOTP(userId, otp, expiry) {
-    console.log(`Saving OTP to DB - User: ${userId}, OTP: ${otp}, Expiry: ${expiry}`);
-    
+    console.log(
+      `Saving OTP to DB - User: ${userId}, OTP: ${otp}, Expiry: ${expiry}`
+    );
+
     return prisma.user.update({
       where: { id: userId },
       data: {
@@ -118,43 +174,43 @@ class AuthRepository {
 
   // Find user by reset OTP - FIXED VERSION
   // Update the findUserByResetOTP method
-async findUserByResetOTP(otp) {
-  const currentTime = new Date();
-  console.log(`Looking for OTP: ${otp}`);
-  console.log(`Current server time: ${currentTime}`);
-  console.log(`Current UTC time: ${currentTime.toUTCString()}`);
-  
-  // Use UTC time for consistent comparison
-  const utcCurrentTime = new Date(currentTime.toISOString());
-  
-  const result = await prisma.user.findFirst({
-    where: {
-      resetOTP: otp,
-      resetOTPExpiry: {
-        gte: utcCurrentTime, // Use UTC time for consistent comparison
+  async findUserByResetOTP(otp) {
+    const currentTime = new Date();
+    console.log(`Looking for OTP: ${otp}`);
+    console.log(`Current server time: ${currentTime}`);
+    console.log(`Current UTC time: ${currentTime.toUTCString()}`);
+
+    // Use UTC time for consistent comparison
+    const utcCurrentTime = new Date(currentTime.toISOString());
+
+    const result = await prisma.user.findFirst({
+      where: {
+        resetOTP: otp,
+        resetOTPExpiry: {
+          gte: utcCurrentTime, // Use UTC time for consistent comparison
+        },
       },
-    },
-    select: {
-      id: true,
-      email: true,
-      resetOTP: true,
-      resetOTPExpiry: true,
-    },
-  });
-  
-  console.log('Database query result:', result);
-  
-  if (result && result.resetOTPExpiry) {
-    const expiryDate = new Date(result.resetOTPExpiry);
-    const timeDiff = expiryDate - utcCurrentTime;
-    console.log(`OTP expiry: ${expiryDate}`);
-    console.log(`Server time: ${utcCurrentTime}`);
-    console.log(`Time until expiry (ms): ${timeDiff}`);
-    console.log(`Time until expiry (minutes): ${timeDiff / 60000}`);
+      select: {
+        id: true,
+        email: true,
+        resetOTP: true,
+        resetOTPExpiry: true,
+      },
+    });
+
+    console.log("Database query result:", result);
+
+    if (result && result.resetOTPExpiry) {
+      const expiryDate = new Date(result.resetOTPExpiry);
+      const timeDiff = expiryDate - utcCurrentTime;
+      console.log(`OTP expiry: ${expiryDate}`);
+      console.log(`Server time: ${utcCurrentTime}`);
+      console.log(`Time until expiry (ms): ${timeDiff}`);
+      console.log(`Time until expiry (minutes): ${timeDiff / 60000}`);
+    }
+
+    return result;
   }
-  
-  return result;
-}
 
   // NEW: Find OTP regardless of expiry status (for debugging)
   async findOTPAnyStatus(otp) {
@@ -174,7 +230,7 @@ async findUserByResetOTP(otp) {
   // Clear OTP after successful reset
   async clearPasswordResetOTP(userId) {
     console.log(`Clearing OTP for user: ${userId}`);
-    
+
     return prisma.user.update({
       where: { id: userId },
       data: {
@@ -187,7 +243,7 @@ async findUserByResetOTP(otp) {
   // Update user password
   async updatePassword(userId, newPasswordHash) {
     console.log(`Updating password for user: ${userId}`);
-    
+
     return prisma.user.update({
       where: { id: userId },
       data: {
