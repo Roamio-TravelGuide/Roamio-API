@@ -285,16 +285,64 @@ async submitForApproval(req, res) {
 
   async createCompleteTourPackage(req, res) {
     try {
-      // console.log('=== TOUR CREATION REQUEST STARTED ===');
+      console.log('=== TOUR CREATION REQUEST STARTED ===');
+      
+      // Log ALL request data
+      console.log('=== REQUEST HEADERS ===');
+      console.log('Content-Type:', req.headers['content-type']);
+      console.log('Content-Length:', req.headers['content-length']);
+      
+      console.log('=== REQUEST BODY (RAW) ===');
+      console.log('Body keys:', Object.keys(req.body));
+      console.log('Full body:', req.body);
+      
+      console.log('=== REQUEST FILES (RAW) ===');
+      console.log('Files count:', req.files?.length || 0);
+      console.log('All files:', req.files);
       
       const files = req.files;
       const body = req.body;
 
-      // console.log('Received files:', files);
-      // console.log('Received body:', body);
+      // Log each field in body in detail
+      console.log('=== DETAILED BODY ANALYSIS ===');
+      Object.keys(body).forEach(key => {
+        console.log(`Field: ${key}`);
+        console.log(`  Type: ${typeof body[key]}`);
+        console.log(`  Length: ${body[key]?.length || 'N/A'}`);
+        
+        // Try to parse JSON fields
+        if (typeof body[key] === 'string') {
+          try {
+            const parsed = JSON.parse(body[key]);
+            console.log(`  Parsed JSON:`, parsed);
+          } catch (e) {
+            console.log(`  String value: ${body[key].substring(0, 100)}${body[key].length > 100 ? '...' : ''}`);
+          }
+        } else {
+          console.log(`  Value:`, body[key]);
+        }
+        console.log('  ---');
+      });
+
+      // Log each file in detail
+      console.log('=== DETAILED FILES ANALYSIS ===');
+      if (files && files.length > 0) {
+        files.forEach((file, index) => {
+          console.log(`File ${index}:`);
+          console.log(`  Fieldname: ${file.fieldname}`);
+          console.log(`  Originalname: ${file.originalname}`);
+          console.log(`  Mimetype: ${file.mimetype}`);
+          console.log(`  Size: ${file.size} bytes`);
+          console.log(`  Buffer length: ${file.buffer?.length || 'N/A'}`);
+          console.log('  ---');
+        });
+      } else {
+        console.log('No files found in request');
+      }
 
       // 1. Validate required data
       if (!req.body.tour) {
+        console.log('ERROR: Tour data is missing from request');
         return res.status(400).json({
           success: false,
           message: 'Tour data is required'
@@ -303,9 +351,11 @@ async submitForApproval(req, res) {
 
       let tourData;
       if (body.tour) {
+        console.log('Parsing tour data from body.tour...');
         tourData = typeof body.tour === 'string' ? JSON.parse(body.tour) : body.tour;
+        console.log('Parsed tourData:', tourData);
       } else {
-        // Fallback: extract from flat structure
+        console.log('Tour data not found in body.tour, trying flat structure...');
         tourData = {
           title: body.title,
           description: body.description,
@@ -314,19 +364,106 @@ async submitForApproval(req, res) {
           status: body.status || 'pending_approval',
           guide_id: body.guide_id
         };
+        console.log('Extracted tourData from flat structure:', tourData);
       }
 
-      // Parse stops data
+      // Parse stops data - FIXED VERSION
       let stops = [];
-      if (body.stops && typeof body.stops === 'string') {
-        stops = JSON.parse(body.stops);
+      console.log('=== PARSING STOPS DATA ===');
+      
+      if (body.stops && Array.isArray(body.stops)) {
+        console.log('Found stops as array:', body.stops);
+        
+        // ✅ FIX: Parse each stop in the array
+        stops = body.stops.map((stopString, index) => {
+          try {
+            if (typeof stopString === 'string') {
+              const parsedStop = JSON.parse(stopString);
+              console.log(`Parsed stop ${index}:`, parsedStop);
+              return parsedStop;
+            } else {
+              console.log(`Stop ${index} is already an object:`, stopString);
+              return stopString;
+            }
+          } catch (e) {
+            console.log(`Error parsing stop ${index}:`, e.message);
+            console.log('Raw stop string:', stopString);
+            return null;
+          }
+        }).filter(stop => stop !== null);
+        
+        console.log('Final parsed stops:', stops);
+      } else if (body.stops && typeof body.stops === 'string') {
+        console.log('Found stops as string, parsing JSON...');
+        try {
+          stops = JSON.parse(body.stops);
+          console.log('Parsed stops from body.stops:', stops);
+        } catch (e) {
+          console.log('Error parsing stops string:', e.message);
+        }
       } else {
-        // Extract stops from flat structure or indexed format
-        stops = parseStopsFromBody(body);
+        console.log('Stops not found in body.stops, checking for indexed stops...');
+        const stopKeys = Object.keys(body).filter(key => key.startsWith('stops['));
+        console.log('Found stop keys:', stopKeys);
+        
+        if (stopKeys.length > 0) {
+          stops = stopKeys.map(key => {
+            try {
+              const stopData = typeof body[key] === 'string' ? JSON.parse(body[key]) : body[key];
+              console.log(`Parsed ${key}:`, stopData);
+              return stopData;
+            } catch (e) {
+              console.log(`Error parsing ${key}:`, e.message);
+              return null;
+            }
+          }).filter(stop => stop !== null);
+          
+          console.log('Final parsed stops from indexed format:', stops);
+        } else {
+          console.log('No stops found in indexed format either');
+          stops = parseStopsFromBody(body);
+          console.log('Stops from parseStopsFromBody:', stops);
+        }
       }
 
+      console.log('=== ANALYZING MEDIA FILES ===');
       const coverImageFile = files.find(file => file.fieldname === 'cover_image');
+      console.log('Cover image file:', coverImageFile ? {
+        fieldname: coverImageFile.fieldname,
+        originalname: coverImageFile.originalname,
+        size: coverImageFile.size
+      } : 'Not found');
+
+      console.log('All media files before organization:');
+      const mediaFiles = files.filter(file => file.fieldname !== 'cover_image');
+      console.log('Media files count:', mediaFiles.length);
+      mediaFiles.forEach(file => {
+        console.log(`  - ${file.fieldname}: ${file.originalname} (${file.size} bytes)`);
+      });
+
       const stopMediaFiles = organizeStopMediaFiles(files);
+      console.log('Organized stop media files:', stopMediaFiles);
+
+      console.log('=== FINAL DATA READY FOR PROCESSING ===');
+      console.log('Tour data:', tourData);
+      console.log('Stops count:', stops.length);
+      
+      // ✅ NOW THIS SHOULD WORK PROPERLY
+      stops.forEach((stop, index) => {
+        console.log(`Stop ${index}:`, {
+          stop_name: stop.stop_name,
+          sequence_no: stop.sequence_no,
+          media_count: stop.media?.length || 0,
+          media: stop.media?.map(m => ({
+            media_type: m.media_type,
+            duration_seconds: m.duration_seconds,
+            file_name: m.file_name
+          }))
+        });
+      });
+      
+      console.log('Cover image:', coverImageFile ? 'Present' : 'Missing');
+      console.log('Stop media files:', stopMediaFiles);
 
       const result = await tourPackageService.createCompleteTourPackage({
         tourData,
@@ -335,15 +472,23 @@ async submitForApproval(req, res) {
         stopMediaFiles
       });
 
+      // For now, just return the parsed data
       res.status(201).json({
         success: true,
-        message: 'Tour package created successfully',
-        data: result
+        message: 'Tour package parsed successfully - check server logs',
+        data: {
+          tourData,
+          stopsCount: stops.length,
+          stops: stops, // Include parsed stops in response for debugging
+          coverImage: !!coverImageFile,
+          mediaFilesCount: Object.keys(stopMediaFiles).length,
+          receivedFiles: files?.length || 0
+        }
       });
 
-      
     } catch (error) {
       console.error('Error creating tour package:', error);
+      console.error('Error stack:', error.stack);
       res.status(400).json({
         success: false,
         message: error.message

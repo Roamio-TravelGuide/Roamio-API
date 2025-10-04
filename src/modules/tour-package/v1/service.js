@@ -297,19 +297,13 @@ class TourPackageService {
   
   async createCompleteTourPackage({tourData, stops, coverImageFile, stopMediaFiles}){
     try {
-
-      // console.log(tourData);
-      // console.log(stops);
-      // console.log(coverImageFile);
-      // console.log(stopMediaFiles);
-
       let coverImageUrl = null;
       let coverMediaId = null;
 
       const initialTour = await tourPackageRepository.createInitialTourPackage(tourData);
-      console.log(initialTour.id);
       let tourId = initialTour.id;
 
+      // Handle cover image
       if (coverImageFile) {
         const coverResult = await LocalFileStorage.storeTourCover(
           tourId,
@@ -317,15 +311,15 @@ class TourPackageService {
           coverImageFile.originalname
         );
         
-        // Create media record for cover image
         const mediaRecord = await tourPackageRepository.createMedia({
           url: coverResult.url,
           media_type: 'image',
           uploaded_by_id: tourData.guide_id,
           file_size: coverImageFile.size,
           format: path.extname(coverImageFile.originalname).replace('.', ''),
-          width: null, // You can extract this if needed
+          width: null,
           height: null,
+          duration_seconds: null, // Images don't have duration
         });
         
         coverImageUrl = coverResult.url;
@@ -338,12 +332,23 @@ class TourPackageService {
 
       const stopMediaUrls = {};
 
-      for (const [stopIndex, files] of Object.entries(stopMediaFiles)) {
+      // ✅ FIX: Use the stops array to get media metadata
+      for (let stopIndex = 0; stopIndex < stops.length; stopIndex++) {
+        const stop = stops[stopIndex];
         stopMediaUrls[stopIndex] = [];
         
-        for (const file of files) {
+        // Check if this stop has media files to upload
+        const files = stopMediaFiles[stopIndex] || [];
+        
+        // Also check if stop has media metadata
+        const stopMediaMetadata = stop.media || [];
+        
+        for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+          const file = files[fileIndex];
+          const mediaMetadata = stopMediaMetadata[fileIndex] || {};
+          
           const resourceType = file.mimetype.startsWith('audio/') ? 'audio' : 
-                            file.mimetype.startsWith('video/') ? 'video' : 'image';
+                              file.mimetype.startsWith('video/') ? 'video' : 'image';
           
           // Upload stop media to local storage
           const mediaResult = await LocalFileStorage.storeStopMedia(
@@ -354,21 +359,28 @@ class TourPackageService {
             file.originalname
           );
           
-          // Create media record for stop media
+          // ✅ FIX: Use duration from metadata if available
+          const duration = mediaMetadata.duration_seconds || null;
+          
+          // ✅ FIX: Create media record with duration
           const mediaRecord = await tourPackageRepository.createMedia({
             url: mediaResult.url,
             media_type: resourceType,
             uploaded_by_id: tourData.guide_id,
             file_size: file.size,
             format: path.extname(file.originalname).replace('.', ''),
-            duration_seconds: null // You can extract audio duration if needed
+            duration_seconds: duration, // ✅ NOW INCLUDES DURATION
+            width: null,
+            height: null,
+            bitrate: null,
+            sample_rate: null,
           });
           
           stopMediaUrls[stopIndex].push({
             url: mediaResult.url,
             type: resourceType,
-            duration: null,
-            media_id: mediaRecord.id // Store media ID for relationship
+            duration: duration,
+            media_id: mediaRecord.id
           });
         }
       }
@@ -379,8 +391,6 @@ class TourPackageService {
         stopMediaUrls
       });
 
-      console.log(`hi ${result}`);
-
       const completeTour = await tourPackageRepository.getTourPackageById(tourId);
 
       return completeTour;
@@ -390,7 +400,7 @@ class TourPackageService {
         await LocalFileStorage.deleteTourFiles(tourId);
       }
       throw new Error(`Failed to create tour package: ${error.message}`);
-      }
+    }
   }
 }
 
