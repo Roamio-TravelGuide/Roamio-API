@@ -1,4 +1,5 @@
 import tourPackageService from "./service.js";
+import { StorageService } from "../../storage/v1/service.js";
 
 
 function parseTourRequestData(req) {
@@ -51,6 +52,10 @@ function parseTourRequestData(req) {
 
 
 class TourPackageController {
+  constructor() {
+    this.storageService = new StorageService();
+    this.getTourPackageMedia = this.getTourPackageMedia.bind(this);
+  }
   
   async getTourPackages(req, res) {
     try {
@@ -76,6 +81,32 @@ class TourPackageController {
       res.status(500).json({
         success: false,
         message: "Internal server error",
+      });
+    }
+  }
+
+  async getTourPackageMedia(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (!id || isNaN(parseInt(id))) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid tour package ID",
+        });
+      }
+
+      const media = await this.storageService.getTourPackageMediaUrls(id);
+
+      return res.status(200).json({
+        success: true,
+        data: media,
+      });
+    } catch (error) {
+      console.error("Error fetching tour package media:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Internal server error",
       });
     }
   }

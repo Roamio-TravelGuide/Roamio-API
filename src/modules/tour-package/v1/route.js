@@ -20,8 +20,7 @@ router.get("/statistics", tourPackageController.getTourPackageStatistics);
 
 router.get("/:id", tourPackageController.getTourPackageById);
 
-// New: return all media (cover + stop media) for a specific tour package
-// router.get("/:id/media", tourPackageController.getTourPackageMedia);
+router.get("/:id/media", tourPackageController.getTourPackageMedia);
 
 router.get("/guide/:guideId", tourPackageController.getTourPackagesByGuideId);
 
