@@ -1,7 +1,6 @@
 import prisma from "../../../database/connection.js";
 import { tourPackageRepository } from "./repository.js";
 import { StorageService } from "../../storage/v1/service.js";
-// import { storeFile, generateFileName } from '../utils/fileStorage.js';
 import LocalFileStorage from '../../../utils/fileStorage.js';
 import path from "path";
 import { fileURLToPath } from "url";
@@ -47,7 +46,6 @@ class TourPackageService {
               },
             },
           },
-          // Include the cover image with full details
           cover_image: {
             select: {
               id: true,
@@ -62,7 +60,6 @@ class TourPackageService {
               sample_rate: true
             }
           },
-          // Include tour stops with their media
           tour_stops: {
             include: {
               location: true,
@@ -87,7 +84,6 @@ class TourPackageService {
             },
             orderBy: { sequence_no: 'asc' }
           },
-          // Include aggregate data
           _count: {
             select: {
               downloads: true,
@@ -102,7 +98,6 @@ class TourPackageService {
       prisma.tourPackage.count({ where }),
     ]);
 
-    // If you need average rating, fetch it separately
     const packageIds = packages.map(pkg => pkg.id);
     const averageRatings = await prisma.review.groupBy({
       by: ['package_id'],
@@ -114,22 +109,18 @@ class TourPackageService {
       }
     });
 
-    // Create a map for quick lookup
     const ratingMap = {};
     averageRatings.forEach(rating => {
       ratingMap[rating.package_id] = rating._avg.rating || 0;
     });
 
-    // Add the stats to each package and transform the media structure
     const packagesWithStats = packages.map(pkg => ({
       ...pkg,
       downloadCount: pkg._count.downloads,
       reviewCount: pkg._count.reviews,
       averageRating: ratingMap[pkg.id] || 0,
-      // Transform tour stops to include media directly
       tour_stops: pkg.tour_stops.map(stop => ({
         ...stop,
-        // Extract media from the join table structure
         media: stop.media.map(tsm => tsm.media)
       }))
     }));
@@ -159,7 +150,6 @@ class TourPackageService {
       if (tourPackage.cover_image?.s3_key) {
         try {
           if (tourPackage.cover_image.s3_key === 'undefined' || tourPackage.cover_image.s3_key === '') {
-            console.warn(`Cover image ${tourPackage.cover_image.id} has invalid s3_key`);
             tourPackage.cover_image_url = tourPackage.cover_image.url;
           } else {
             const coverImageUrl = await this.storageService.getFileUrl(tourPackage.cover_image.s3_key, 7200);
@@ -181,7 +171,7 @@ class TourPackageService {
                   if (stopMedia.media?.s3_key) {
                     try {
                       if (stopMedia.media.s3_key === 'undefined' || stopMedia.media.s3_key === '') {
-                        console.warn(`Media ${stopMedia.media.id} has invalid s3_key`);
+                        // Skip invalid s3_key
                       } else {
                         const mediaUrl = await this.storageService.getFileUrl(stopMedia.media.s3_key, 7200);
                         stopMedia.media.url = mediaUrl;
@@ -258,7 +248,7 @@ class TourPackageService {
     }
   }
 
-   async updateTour(id, updateData) {
+  async updateTour(id, updateData) {
     try {
       if (!updateData.title || !updateData.description) {
         throw new Error('Title and description are required');
@@ -297,7 +287,6 @@ class TourPackageService {
   
   async createCompleteTourPackage({tourData, stops, coverImageFile, stopMediaFiles}){
     try {
-      let coverImageUrl = null;
       let coverMediaId = null;
 
       const initialTour = await tourPackageRepository.createInitialTourPackage(tourData);
@@ -319,10 +308,9 @@ class TourPackageService {
           format: path.extname(coverImageFile.originalname).replace('.', ''),
           width: null,
           height: null,
-          duration_seconds: null, // Images don't have duration
+          duration_seconds: null,
         });
         
-        coverImageUrl = coverResult.url;
         coverMediaId = mediaRecord.id;
       }
 
@@ -332,15 +320,11 @@ class TourPackageService {
 
       const stopMediaUrls = {};
 
-      // ✅ FIX: Use the stops array to get media metadata
       for (let stopIndex = 0; stopIndex < stops.length; stopIndex++) {
         const stop = stops[stopIndex];
         stopMediaUrls[stopIndex] = [];
         
-        // Check if this stop has media files to upload
         const files = stopMediaFiles[stopIndex] || [];
-        
-        // Also check if stop has media metadata
         const stopMediaMetadata = stop.media || [];
         
         for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
@@ -350,7 +334,6 @@ class TourPackageService {
           const resourceType = file.mimetype.startsWith('audio/') ? 'audio' : 
                               file.mimetype.startsWith('video/') ? 'video' : 'image';
           
-          // Upload stop media to local storage
           const mediaResult = await LocalFileStorage.storeStopMedia(
             tourId,
             stopIndex,
@@ -359,17 +342,15 @@ class TourPackageService {
             file.originalname
           );
           
-          // ✅ FIX: Use duration from metadata if available
           const duration = mediaMetadata.duration_seconds || null;
           
-          // ✅ FIX: Create media record with duration
           const mediaRecord = await tourPackageRepository.createMedia({
             url: mediaResult.url,
             media_type: resourceType,
             uploaded_by_id: tourData.guide_id,
             file_size: file.size,
             format: path.extname(file.originalname).replace('.', ''),
-            duration_seconds: duration, // ✅ NOW INCLUDES DURATION
+            duration_seconds: duration,
             width: null,
             height: null,
             bitrate: null,
@@ -402,7 +383,145 @@ class TourPackageService {
       throw new Error(`Failed to create tour package: ${error.message}`);
     }
   }
+
+  async updateTourPackage({ tourId, tourData, stops, coverImageFile, stopMediaFiles }) {
+    try {
+      // Get existing tour to verify it exists
+      const existingTour = await tourPackageRepository.getTourPackageById(tourId);
+      if (!existingTour) {
+        throw new Error('Tour package not found');
+      }
+
+      let coverMediaId = existingTour.cover_image_id;
+
+      // Handle cover image update - only if new file provided
+      if (coverImageFile) {
+        // Delete old cover image file if exists
+        if (existingTour.cover_image?.url) {
+          await LocalFileStorage.deleteFile(existingTour.cover_image.url);
+        }
+        
+        // Upload new cover image to tour folder
+        const coverResult = await LocalFileStorage.storeTourCover(
+          tourId,
+          coverImageFile.buffer,
+          coverImageFile.originalname
+        );
+        
+        // Create new media record
+        const mediaRecord = await tourPackageRepository.createMedia({
+          url: coverResult.url,
+          media_type: 'image',
+          uploaded_by_id: tourData.guide_id || existingTour.guide_id,
+          file_size: coverImageFile.size,
+          format: path.extname(coverImageFile.originalname).replace('.', ''),
+          width: null,
+          height: null,
+          duration_seconds: null,
+        });
+        
+        coverMediaId = mediaRecord.id;
+      }
+
+      // Process stop media files
+      const stopMediaUrls = {};
+      
+      if (stops && stops.length > 0) {
+        // Get existing stops to handle media cleanup
+        const existingStops = existingTour.tour_stops || [];
+        
+        for (let stopIndex = 0; stopIndex < stops.length; stopIndex++) {
+          const stop = stops[stopIndex];
+          stopMediaUrls[stopIndex] = [];
+          
+          const existingStop = existingStops.find(s => s.id === stop.id);
+          
+          // Handle new media files for this stop
+          const files = stopMediaFiles[stopIndex] || [];
+          const stopMediaMetadata = stop.media || [];
+          
+          // If existing stop and new files provided, delete old media files
+          if (existingStop && files.length > 0) {
+            for (const existingMedia of existingStop.media) {
+              await LocalFileStorage.deleteFile(existingMedia.media.url);
+            }
+          }
+          
+          // Upload new media files
+          for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+            const file = files[fileIndex];
+            const mediaMetadata = stopMediaMetadata[fileIndex] || {};
+            
+            const resourceType = file.mimetype.startsWith('audio/') ? 'audio' : 
+                                file.mimetype.startsWith('video/') ? 'video' : 'image';
+            
+            const mediaResult = await LocalFileStorage.storeStopMedia(
+              tourId,
+              stopIndex,
+              resourceType,
+              file.buffer,
+              file.originalname
+            );
+            
+            const duration = mediaMetadata.duration_seconds || null;
+            
+            const mediaRecord = await tourPackageRepository.createMedia({
+              url: mediaResult.url,
+              media_type: resourceType,
+              uploaded_by_id: tourData.guide_id || existingTour.guide_id,
+              file_size: file.size,
+              format: path.extname(file.originalname).replace('.', ''),
+              duration_seconds: duration,
+              width: null,
+              height: null,
+              bitrate: null,
+              sample_rate: null,
+            });
+            
+            stopMediaUrls[stopIndex].push({
+              url: mediaResult.url,
+              type: resourceType,
+              duration: duration,
+              media_id: mediaRecord.id
+            });
+          }
+        }
+        
+        // Handle deleted stops - delete their files
+        const updatedStopIds = stops.map(s => s.id).filter(id => id);
+        const stopsToDelete = existingStops.filter(s => !updatedStopIds.includes(s.id));
+        
+        for (const stopToDelete of stopsToDelete) {
+          for (const media of stopToDelete.media) {
+            await LocalFileStorage.deleteFile(media.media.url);
+          }
+        }
+      }
+
+      // Update cover image if changed
+      if (coverMediaId !== existingTour.cover_image_id) {
+        await tourPackageRepository.updateTourCover(tourId, coverMediaId);
+      }
+
+      // Update tour package with stops using repository
+      const updatedTour = await tourPackageRepository.updateTourPackageWithStops(
+        tourId,
+        {
+        ...tourData,
+        status: 'pending_approval', 
+        rejection_reason: null
+        },
+        stops,
+        stopMediaUrls
+      );
+
+      return updatedTour;
+
+    } catch (error) {
+      console.error('Error updating tour package:', error);
+      throw new Error(`Failed to update tour package: ${error.message}`);
+    }
+  }
 }
 
 export default new TourPackageService();
-

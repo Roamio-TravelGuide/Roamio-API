@@ -35,6 +35,9 @@ router.delete("/:id", tourPackageController.deleteTourPackage);
 
 router.post("/:id/submit", tourPackageController.submitForApproval);
 
-router.put("/:id", tourPackageController.updateTour);
+router.post('/:id/submit', tourPackageController.submitForApproval);
+
+router.put('/:id', upload.any(), tourPackageController.updateTour);
+
 
 export default router;

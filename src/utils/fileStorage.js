@@ -96,6 +96,82 @@ export class LocalFileStorage {
     }
   }
 
+  /**
+   * Delete a specific file by its relative path
+   */
+  async deleteFile(relativePath) {
+    try {
+      // Remove the '/uploads/' prefix if present in the URL
+      let cleanPath = relativePath;
+      if (relativePath.startsWith('/uploads/')) {
+        cleanPath = relativePath.substring('/uploads/'.length);
+      }
+      
+      const fullPath = path.join(this.basePath, cleanPath);
+      
+      // Check if file exists
+      if (!fs.existsSync(fullPath)) {
+        console.log(`File not found: ${fullPath}`);
+        return false;
+      }
+      
+      // Delete the file
+      await fs.promises.unlink(fullPath);
+      console.log(`Successfully deleted file: ${cleanPath}`);
+      
+      // Try to clean up empty directories
+      await this.cleanupEmptyDirectories(path.dirname(fullPath));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Recursively clean up empty directories
+   */
+  async cleanupEmptyDirectories(dirPath) {
+    try {
+      // Check if directory is empty
+      const files = await fs.promises.readdir(dirPath);
+      
+      if (files.length === 0) {
+        // Directory is empty, delete it
+        await fs.promises.rmdir(dirPath);
+        console.log(`Deleted empty directory: ${dirPath}`);
+        
+        // Recursively check parent directory
+        const parentDir = path.dirname(dirPath);
+        if (parentDir !== this.basePath && parentDir.startsWith(this.basePath)) {
+          await this.cleanupEmptyDirectories(parentDir);
+        }
+      }
+    } catch (error) {
+      // Ignore errors in directory cleanup (non-empty directories, etc.)
+      console.log(`Directory not empty or cannot be deleted: ${dirPath}`);
+    }
+  }
+
+  async deleteTourFiles(tourId) {
+    try {
+      const tourDir = this.getTourDirectoryStructure(tourId);
+      const fullPath = path.join(this.basePath, tourDir);
+      
+      if (fs.existsSync(fullPath)) {
+        await fs.promises.rm(fullPath, { recursive: true, force: true });
+        console.log(`Deleted tour files for tour ${tourId}`);
+        return true;
+      }
+      console.log(`No files found for tour ${tourId}`);
+      return false;
+    } catch (error) {
+      console.error('Error deleting tour files:', error);
+      return false;
+    }
+  }
+
   getMimeType(filename) {
     const ext = path.extname(filename).toLowerCase();
     const mimeTypes = {
@@ -117,24 +193,6 @@ export class LocalFileStorage {
     // Remove any leading slashes and ensure proper URL format
     const cleanPath = relativePath.replace(/^[\\/]/, '').replace(/\\/g, '/');
     return `/uploads/${cleanPath}`;
-  }
-
-  async deleteTourFiles(tourId) {
-    try {
-      const tourDir = this.getTourDirectoryStructure(tourId);
-      const fullPath = path.join(this.basePath, tourDir);
-      
-      if (fs.existsSync(fullPath)) {
-        await fs.promises.rm(fullPath, { recursive: true, force: true });
-        console.log(`Deleted tour files for tour ${tourId}`);
-        return true;
-      }
-      console.log(`No files found for tour ${tourId}`);
-      return false;
-    } catch (error) {
-      console.error('Error deleting tour files:', error);
-      return false;
-    }
   }
 
   async fileExists(relativePath) {
