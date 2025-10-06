@@ -14,7 +14,6 @@ export class PaymentService {
     const payment = await this.paymentRepository.getPayment(id);
     return payment;
   }
-
   async getTotalRevenue() {
     return this.paymentRepository.getTotalRevenue();
   }
@@ -74,22 +73,24 @@ export class PaymentService {
 
     return await this.paymentRepository.createPayment(paymentData);
   }
-  async createStripPayment(paymentIntentData) {
+  async createStripPayment(paymentIntentData, userId) {
     // Use paymentIntent directly, do NOT destructure `data`
     const stripPaymentData = {
       transaction_id: paymentIntentData.id,
-     
-      user: { connect: { id: 1 } }, // <-- required, do NOT include userId,
-      amount: paymentIntentData.amount,
-      status: 'pending',
+  
+      user: { connect: { id: userId } },
+      amount: paymentIntentData.amount / 100, // Convert from cents to dollars
+      status: paymentIntentData.status === "succeeded" ? 'completed' : 'pending',
       currency: paymentIntentData.currency,
-      
-       paid_at: paymentIntentData.status === "succeeded" ? new Date(paymentIntentData.created * 1000) : null,
+  
+      paid_at: paymentIntentData.status === "succeeded" ? new Date(paymentIntentData.created * 1000) : null,
       invoice_number: paymentIntentData.id,
-
+      package_id: paymentIntentData.metadata?.packageId ? parseInt(paymentIntentData.metadata.packageId) : null,
+  
     };
-
-    return await this.paymentRepository.createStripPayment(stripPaymentData);
+  
+    const payment = await this.paymentRepository.createStripPayment(stripPaymentData);
+    return paymentIntentData; // Return the paymentIntentData for clientSecret
   }
 
   async handlePaymentFailure(paymentIntent) {
