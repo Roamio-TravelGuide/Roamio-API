@@ -10,6 +10,11 @@ router.post(
   validateRequest(authValidations.login),
   AuthController.login
 );
+router.get(
+  '/logout', 
+  AuthController.logout
+);
+
 
 router.post(
   "/signup",
@@ -51,4 +56,5 @@ router.post(
   validateRequest(authValidations.resetPassword),
   AuthController.resetPasswordWithOTP
 );
+
 export default router;

@@ -46,7 +46,6 @@ class AuthService {
         "Your account is pending approval. Please wait for admin approval or check your email for updates."
       );
     }
-
     const isPasswordValid = await comparePasswords(
       loginData.password,
       user.password_hash
@@ -71,6 +70,23 @@ class AuthService {
       },
     };
   }
+
+  async logout(token) {
+    console.log('Logout requested', token ? `with token: ${token.substring(0, 10)}...` : 'without token');
+    
+    // In a production app with JWT, you would:
+    // 1. Add token to blacklist/revocation list
+    // 2. Clear server-side session if using sessions
+    // 3. Log the logout event for security audit
+    
+    // For now, just acknowledge the logout
+    return { 
+      success: true, 
+      message: "Logged out successfully",
+      timestamp: new Date().toISOString()
+    };
+  }
+
 
   async signup(userData) {
     const existingUser = await this.authRepository.findUserByEmail(
