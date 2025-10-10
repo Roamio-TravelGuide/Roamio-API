@@ -11,14 +11,21 @@ class AuthController {
     }
   }
 
-  static async signup(req, res, next) {
-    try {
-      const result = await new AuthService().signup(req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      next({ status: 409, message: error.message });
+static async signup(req, res, next) {
+  try {
+    const userData = req.body;
+
+    // If guide uploads document
+    if (req.file) {
+      userData.verification_documents = `/uploads/guideDocuments/${req.file.filename}`;
     }
+
+    const result = await new AuthService().signup(userData);
+    res.status(201).json(result);
+  } catch (error) {
+    next({ status: 409, message: error.message });
   }
+}
 
   // Send password reset email/token
   static async forgotPassword(req, res, next) {
