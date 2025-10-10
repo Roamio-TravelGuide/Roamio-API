@@ -6,5 +6,6 @@ const router = Router();
 const travellerController = new TravellerController();
 
 router.get("/my-trips", authenticate, (req, res) => travellerController.getMyTrips(req, res));
+router.get("/nearby-pois", (req, res) => travellerController.getNearbyPois(req, res));
 
 export default router;

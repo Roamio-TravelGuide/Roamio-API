@@ -15,4 +15,7 @@ router.get("/vendor/:vendorId", (req, res) =>
 // DEV: Get all POIs (with locations) - debug endpoint
 router.get("/all", (req, res) => poiController.getAllPois(req, res));
 
+// Get nearby POIs within radius
+router.get("/nearby", (req, res) => poiController.getNearbyPois(req, res));
+
 export default router;

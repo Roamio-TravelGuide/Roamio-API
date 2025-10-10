@@ -46,4 +46,36 @@ export default class PoiController {
         .json({ success: false, message: "Internal server error" });
     }
   }
+
+  async getNearbyPois(req, res) {
+    try {
+      const { latitude, longitude, radius = 200, category } = req.query;
+
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          success: false,
+          message: "Latitude and longitude are required"
+        });
+      }
+
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+      const radiusKm = parseFloat(radius);
+
+      if (isNaN(lat) || isNaN(lng) || isNaN(radiusKm)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid latitude, longitude, or radius"
+        });
+      }
+
+      const pois = await this.poiService.findNearby(lat, lng, radiusKm, category);
+      return res.status(200).json({ success: true, data: pois });
+    } catch (err) {
+      console.error("Get nearby POIs error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
+    }
+  }
 }

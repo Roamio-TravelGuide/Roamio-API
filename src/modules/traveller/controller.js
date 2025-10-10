@@ -22,4 +22,16 @@ export class TravellerController {
       res.status(500).json({ error: error.message || "Failed to fetch trips" });
     }
   }
+
+  async getNearbyPois(req, res) {
+    try {
+      const pois = await this.travellerService.findNearbyPois();
+      return res.status(200).json({ success: true, data: pois });
+    } catch (err) {
+      console.error("Get nearby POIs error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
+    }
+  }
 }
