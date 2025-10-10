@@ -56,6 +56,11 @@ export class TravellerRepository {
                 sequence_no: 'asc',
               },
             },
+            reviews: {
+              select: {
+                rating: true,
+              },
+            },
           },
         },
       },
@@ -70,9 +75,16 @@ export class TravellerRepository {
     for (const payment of payments) {
       const pkg = payment.package;
       if (pkg && !seen.has(pkg.id)) {
+        // Calculate average rating
+        const reviews = pkg.reviews || [];
+        const averageRating = reviews.length > 0
+          ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+          : 0;
+
         // Flatten media for tour_stops
         const transformedPkg = {
           ...pkg,
+          average_rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
           tour_stops: pkg.tour_stops.map(stop => ({
             ...stop,
             media: stop.media.map(tsm => tsm.media)
