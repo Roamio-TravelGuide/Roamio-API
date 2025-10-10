@@ -13,6 +13,11 @@ router.post(
   validateRequest(authValidations.login),
   AuthController.login
 );
+router.get(
+  '/logout', 
+  AuthController.logout
+);
+
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -81,4 +86,5 @@ router.post(
   validateRequest(authValidations.resetPassword),
   AuthController.resetPasswordWithOTP
 );
+
 export default router;

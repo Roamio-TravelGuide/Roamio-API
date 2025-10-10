@@ -1,6 +1,5 @@
 import { AuthService } from "./service.js";
 
-
 class AuthController {
   static async login(req, res, next) {
     try {
@@ -29,37 +28,39 @@ static async signup(req, res, next) {
 
   // Send password reset email/token
   static async forgotPassword(req, res, next) {
-  try {
-    const result = await new AuthService().forgotPassword(req.body.email);
-    res.json(result); // Return the actual result from service
-  } catch (error) {
-    next(error);
+    try {
+      const result = await new AuthService().forgotPassword(req.body.email);
+      res.json(result); // Return the actual result from service
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-// Verify OTP
-static async verifyOTP(req, res, next) {
-  try {
-    const { email, otp } = req.body;
-    const result = await new AuthService().verifyOTP(email, otp);
-    res.json(result);
-  } catch (error) {
-    next(error);
+  // Verify OTP
+  static async verifyOTP(req, res, next) {
+    try {
+      const { email, otp } = req.body;
+      const result = await new AuthService().verifyOTP(email, otp);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-// Reset password with OTP
-static async resetPasswordWithOTP(req, res, next) {
-  try {
-    const { email, otp, newPassword } = req.body;
-    const result = await new AuthService().verifyOTPAndResetPassword(email, otp, newPassword);
-    res.json(result);
-  } catch (error) {
-    next(error);
+  // Reset password with OTP
+  static async resetPasswordWithOTP(req, res, next) {
+    try {
+      const { email, otp, newPassword } = req.body;
+      const result = await new AuthService().verifyOTPAndResetPassword(
+        email,
+        otp,
+        newPassword
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
   }
-}
-    
 }
 
 export { AuthController };
-
