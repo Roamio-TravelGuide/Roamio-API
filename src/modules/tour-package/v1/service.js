@@ -438,9 +438,10 @@ class TourPackageService {
           const stopMediaMetadata = stop.media || [];
 
           // If existing stop and new files provided, delete old media files
+          console.log(existingStop);
           if (existingStop && files.length > 0) {
             for (const existingMedia of existingStop.media) {
-              await LocalFileStorage.deleteFile(existingMedia.media.url);
+              await LocalFileStorage.deleteFile(existingMedia.url);
             }
           }
 
