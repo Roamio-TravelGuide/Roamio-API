@@ -51,7 +51,6 @@ export class PaymentController {
       });
     }
   }
-
   async getTopPerformerRevenue(req, res){
     try {
       const topPerformerRevenue = await this.paymentService.getTopPerformerRevenue();
@@ -113,9 +112,13 @@ export class PaymentController {
   async createStripPayment(req, res) {
     try {
       const data = req.body;
-
-      const stripPaymentData = await this.paymentService.createStripPayment(data);
-
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+  
+      const stripPaymentData = await this.paymentService.createStripPayment(data, userId);
+  
       res.status(201).json({
         clientSecret: stripPaymentData.client_secret,
         paymentIntentId: stripPaymentData.id

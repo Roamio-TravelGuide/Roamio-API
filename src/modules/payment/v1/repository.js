@@ -254,6 +254,19 @@ export class PaymentRepository {
       throw new Error("Failed to fetch top selling package");
     }
   }
+
+  async createStripPayment(stripPaymentData) {
+    try {
+      const payment = await this.prisma.payment.create({
+        data: stripPaymentData
+      });
+      return payment;
+    } catch (error) {
+      console.error("Error creating strip payment:", error);
+      throw new Error("Failed to create strip payment");
+    }
+  }
+
 }
 
 
