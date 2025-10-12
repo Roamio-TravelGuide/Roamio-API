@@ -256,6 +256,7 @@ class TourPackageController {
 
   async getTourPackagesByGuideId(req, res) {
     try {
+
       const { guideId } = req.params;
       const { status, search, page = 1, limit = 10 } = req.query;
 
