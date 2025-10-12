@@ -12,5 +12,7 @@ router.get('/travelerProfile/:userId', (req,res)=> userController.getTravelerPro
 router.get('/performance/:userId' , (req,res) => userController.getGuidePerformance(req,res));
 router.get('/documents/:userId' , (req,res) => userController.getGuideDocuments(req,res));
 
+router.get('/guide/:userId', (req, res) => userController.getGuideId(req, res));
+
 
 export default router;

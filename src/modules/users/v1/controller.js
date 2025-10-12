@@ -188,4 +188,39 @@ export class UserController {
             });
         }
     }
+
+    async getGuideId(req, res) {
+        try {
+            const { userId } = req.params;
+            
+            if (!userId || isNaN(parseInt(userId))) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid user ID'
+                });
+            }
+
+            const result = await this.userService.getGuideId(parseInt(userId));
+
+            return res.status(200).json({
+                success: true,
+                data: result.data,
+                message: result.message
+            });
+        } catch (error) {
+            console.error('Error in getGuideId controller:', error);
+            
+            if (error.message.includes('not found')) {
+                return res.status(404).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    }
 }
