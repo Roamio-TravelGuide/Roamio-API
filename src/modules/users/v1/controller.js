@@ -84,6 +84,53 @@ export class UserController {
         }
     }
 
+    async getTravelerProfile(req,res){
+        try {
+            const { userId } = req.params;
+            // Implement the logic to get traveler profile using userService
+            const profile = await this.userService.getTravelerProfile(parseInt(userId));
+            res.status(200).json({
+                success: true,
+                data: profile
+            });
+        } catch (error) {
+            console.error('Error fetching traveler profile:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch traveler profile',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    }
+
+    async updateUserProfile(req, res) {
+        try {
+            const { name, email, phoneNo } = req.body;
+            const userId = req.params.userId;
+
+            console.log('Updating profile for user:', userId, 'with data:', { name, email, phoneNo });
+            
+            const updatedProfile = await this.userService.updateProfile(userId, {
+                fullName: name,
+                email,
+                phone: phoneNo
+            });
+            
+            res.status(200).json({
+                success: true,
+                message: 'Profile updated successfully',
+                data: updatedProfile
+            });
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to update profile',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    }
+
 
     async getGuideProfile(req, res) {
         try {

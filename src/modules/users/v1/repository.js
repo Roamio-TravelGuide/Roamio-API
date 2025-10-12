@@ -65,6 +65,35 @@ export class UserRepository {
         }
     }
 
+    async updateProfile(userId, profileData) {
+        try {
+            console.log('Updating user profile in repository:', { userId, profileData });
+            
+            const updatedUser = await this.prisma.user.update({
+                where: { id: parseInt(userId) },
+                data: {
+                    name: profileData.fullName,
+                    email: profileData.email,
+                    phone_no: profileData.phone
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone_no: true,
+                    profile_picture_url: true,
+                    bio: true
+                }
+            });
+
+            console.log('Profile updated successfully:', updatedUser);
+            return updatedUser;
+        } catch (error) {
+            console.error('Error updating user profile:', error);
+            throw new Error(`Failed to update user profile: ${error.message}`);
+        }
+    }
+
     async getGuideProfile(userId) {
         try {
             const guideProfile = await this.prisma.user.findUnique({
@@ -100,6 +129,29 @@ export class UserRepository {
             throw new Error('Failed to fetch guide profile');
         }
     }
+
+    async getTravelerProfile(userId){
+        try {
+            const travelerProfile = await this.prisma.user.findUnique({
+                where:{id: userId},
+                select:{
+                    id:true,
+                    name:true,
+                    email:true,
+                    phone_no:true,
+                    bio:true,
+                    profile_picture_url:true,
+                    last_login:true,
+                    status:true,
+                }
+            });
+            return travelerProfile;
+        } catch (error) {
+            console.error('Error fetching traveler profile:', error);
+            throw new Error('Failed to fetch traveler profile');
+        }
+    }
+
 
     async getGuidePerformance(userId) {
         try {
