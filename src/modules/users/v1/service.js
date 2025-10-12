@@ -17,6 +17,24 @@ export class UserService {
         return this.userRepository.getGuideProfile(userId);
     }
 
+    async updateProfile(userId, profileData) {
+        try {
+            const updatedUser = await this.userRepository.updateProfile(userId, profileData);
+            return {
+                success: true,
+                message: "Profile updated successfully",
+                data: updatedUser
+            };
+        } catch (error) {
+            console.error("Profile update error:", error);
+            throw new Error("Failed to update profile: " + error.message);
+        }
+    }
+
+    async getTravelerProfile(userId){
+        return this.userRepository.getTravelerProfile(userId);
+    }
+
     async getGuidePerformance(userId){
         return this.userRepository.getGuidePerformance(userId);
     }
