@@ -236,4 +236,29 @@ export class UserRepository {
             throw new Error('Failed to fetch guide documents');
         }
     }
+
+    async getGuideId(userId) {
+        try {
+            const guide = await this.prisma.travelGuide.findUnique({
+                where: {
+                    user_id: userId
+                },
+                select: {
+                    id: true
+                }
+            });
+
+            if (!guide) {
+                throw new Error('Guide not found for this user');
+            }
+
+            return {
+                success: true,
+                guideId: guide.id
+            };
+        } catch (error) {
+            console.error('Error in getGuideId repository:', error);
+            throw new Error(`Failed to get guide ID: ${error.message}`);
+        }
+    }
 }

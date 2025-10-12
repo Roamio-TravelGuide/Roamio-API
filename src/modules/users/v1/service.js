@@ -42,4 +42,31 @@ export class UserService {
     async getGuideDocuments(userId) {
         return this.userRepository.getGuideDocuments(userId);
     }
+
+    async getGuideId(userId) {
+        try {
+            if (!userId || isNaN(userId)) {
+                throw new Error('Invalid user ID');
+            }
+
+            const result = await this.userRepository.getGuideId(parseInt(userId));
+
+            return {
+                success: true,
+                data: {
+                    guideId: result.guideId
+                },
+                message: 'Guide ID retrieved successfully'
+            };
+        } catch (error) {
+            console.error('Error in getGuideId service:', error);
+            
+            if (error.message.includes('not found')) {
+                throw new Error('No guide profile found for this user');
+            }
+            
+            throw new Error(`Failed to get guide ID: ${error.message}`);
+        }
+    }
+    
 }
