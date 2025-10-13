@@ -13,10 +13,10 @@ router.post(
   validateRequest(authValidations.login),
   AuthController.login
 );
-// router.get(
-//   '/logout', 
-//   AuthController.logout
-// );
+router.get(
+  '/logout', 
+  AuthController.logout
+);
 
 
 const storage = multer.diskStorage({

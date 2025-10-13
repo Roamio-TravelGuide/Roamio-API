@@ -208,6 +208,73 @@ class HiddenGemService {
             console.error('Cleanup error during failed creation:', cleanupError.message);
         }
     }
+
+    async getHiddenGemsForModeration(filters = {}) {
+        try {
+            const {
+                status = 'pending',
+                search = '',
+                location = 'all',
+                page = 1,
+                limit = 10,
+                sortBy = 'created_at',
+                sortOrder = 'desc'
+            } = filters;
+
+            const result = await this.hiddenGemRepository.findForModeration({
+                status,
+                search,
+                location,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sortBy,
+                sortOrder
+            });
+
+            return result;
+        } catch (error) {
+            console.error('getHiddenGemsForModeration service error:', error.message);
+            throw error;
+        }
+    }
+
+    // NEW METHOD: Update hidden gem status (approve/reject)
+    async updateHiddenGemStatus(hiddenGemId, statusData) {
+        try {
+            const { status, rejectionReason } = statusData;
+
+            if (!['pending', 'approved', 'rejected', 'draft'].includes(status)) {
+                throw new Error('Invalid status. Must be: pending, approved, rejected, or draft');
+            }
+
+            if (status === 'rejected' && !rejectionReason) {
+                throw new Error('Rejection reason is required when rejecting a hidden gem');
+            }
+
+            const updatedGem = await this.hiddenGemRepository.updateStatus({
+                hiddenGemId: parseInt(hiddenGemId),
+                status,
+                rejectionReason,
+                verifiedAt: status === 'approved' ? new Date() : null
+            });
+
+            return updatedGem;
+        } catch (error) {
+            console.error('updateHiddenGemStatus service error:', error.message);
+            throw error;
+        }
+    }
+
+    // NEW METHOD: Get moderation statistics
+    async getModerationStats() {
+        try {
+            const stats = await this.hiddenGemRepository.getModerationStats();
+            return stats;
+        } catch (error) {
+            console.error('getModerationStats service error:', error.message);
+            throw error;
+        }
+    }
 }
 
 export default new HiddenGemService();
