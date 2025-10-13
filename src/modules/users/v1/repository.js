@@ -90,6 +90,140 @@ export class UserRepository {
                 select: {
                   id: true,
                   status: true,
+
+    async updateUserStatus(userId, status) {
+        try {
+            await this.prisma.user.update({
+                where: { id: userId },
+                data: { status }
+            });
+        } catch (error) {
+            console.error('Error updating user status:', error);
+            throw new Error('Failed to update user status');
+        }
+    }
+
+    async updateProfile(userId, profileData) {
+        try {
+            console.log('Updating user profile in repository:', { userId, profileData });
+            
+            const updatedUser = await this.prisma.user.update({
+                where: { id: parseInt(userId) },
+                data: {
+                    name: profileData.fullName,
+                    email: profileData.email,
+                    phone_no: profileData.phone
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone_no: true,
+                    profile_picture_url: true,
+                    bio: true
+                }
+            });
+
+            console.log('Profile updated successfully:', updatedUser);
+            return updatedUser;
+        } catch (error) {
+            console.error('Error updating user profile:', error);
+            throw new Error(`Failed to update user profile: ${error.message}`);
+        }
+    }
+
+    async getGuideProfile(userId) {
+        try {
+            const guideProfile = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone_no: true,
+                    bio: true,
+                    profile_picture_url: true,
+                    last_login: true,
+                    status: true,
+                    guides: {
+                        select: {
+                            id: true,
+                            years_of_experience: true,
+                            languages_spoken: true,
+                            tour_packages: {
+                                select: {
+                                    id: true,
+                                    status: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            return guideProfile;
+        } catch (error) {
+            console.error('Error fetching guide profile:', error);
+            throw new Error('Failed to fetch guide profile');
+        }
+    }
+
+    async getTravelerProfile(userId){
+        try {
+            const travelerProfile = await this.prisma.user.findUnique({
+                where:{id: userId},
+                select:{
+                    id:true,
+                    name:true,
+                    email:true,
+                    phone_no:true,
+                    bio:true,
+                    profile_picture_url:true,
+                    last_login:true,
+                    status:true,
+                }
+            });
+            return travelerProfile;
+        } catch (error) {
+            console.error('Error fetching traveler profile:', error);
+            throw new Error('Failed to fetch traveler profile');
+        }
+    }
+
+
+    async getGuidePerformance(userId) {
+        try {
+            // Get tour packages count
+            const toursConducted = await this.prisma.tourPackage.count({
+                where: {
+                    guide_id: userId,
+                    status: 'published'
+                }
+            });
+
+            // Get reviews and calculate rating
+            const reviews = await this.prisma.review.findMany({
+                where: {
+                    package: {
+                        guide_id: userId
+                    }
+                },
+                select: {
+                    rating: true
+                }
+            });
+
+            const rating = reviews.length > 0 
+                ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+                : 0;
+
+            // Get total earnings
+            const payments = await this.prisma.payment.findMany({
+                where: {
+                    package: {
+                        guide_id: userId
+                    },
+                    status: 'completed'
                 },
               },
             },
@@ -194,4 +328,30 @@ export class UserRepository {
       throw new Error("Failed to fetch guide documents");
     }
   }
+}
+
+    async getGuideId(userId) {
+        try {
+            const guide = await this.prisma.travelGuide.findUnique({
+                where: {
+                    user_id: userId
+                },
+                select: {
+                    id: true
+                }
+            });
+
+            if (!guide) {
+                throw new Error('Guide not found for this user');
+            }
+
+            return {
+                success: true,
+                guideId: guide.id
+            };
+        } catch (error) {
+            console.error('Error in getGuideId repository:', error);
+            throw new Error(`Failed to get guide ID: ${error.message}`);
+        }
+    }
 }

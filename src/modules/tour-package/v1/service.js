@@ -3,6 +3,8 @@ import { tourPackageRepository } from "./repository.js";
 import LocalFileStorage from "../../../utils/fileStorage.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { UserService } from '../../users/v1/service.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -192,6 +194,14 @@ class TourPackageService {
         throw new Error("Invalid guide ID");
       }
 
+      try {
+        const userService = new UserService();
+        const guideResult = await userService.getGuideId(guideId);
+        guideId = guideResult.data.guideId;
+      } catch (error) {
+        throw new Error(`Failed to get guide ID: ${error.message}`);
+      }
+
       const result = await tourPackageRepository.findByGuideId(
         guideId,
         filters
@@ -271,9 +281,23 @@ class TourPackageService {
   }) {
     try {
       let coverMediaId = null;
+      let guideId;
+
+      try {
+        const userService = new UserService();
+        const guideResult = await userService.getGuideId(tourData.user_id || tourData.guide_id);
+        guideId = guideResult.data.guideId;
+      } catch (error) {
+        throw new Error(`Failed to get guide ID: ${error.message}`);
+      }
+
+      const tourDataWithGuideId = {
+        ...tourData,
+        guide_id: guideId
+      };
 
       const initialTour = await tourPackageRepository.createInitialTourPackage(
-        tourData
+        tourDataWithGuideId
       );
       let tourId = initialTour.id;
 
@@ -438,9 +462,10 @@ class TourPackageService {
           const stopMediaMetadata = stop.media || [];
 
           // If existing stop and new files provided, delete old media files
+          console.log(existingStop);
           if (existingStop && files.length > 0) {
             for (const existingMedia of existingStop.media) {
-              await LocalFileStorage.deleteFile(existingMedia.media.url);
+              await LocalFileStorage.deleteFile(existingMedia.url);
             }
           }
 

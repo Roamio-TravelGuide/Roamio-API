@@ -33,6 +33,16 @@ export class LocalFileStorage {
     return tourDir;
   }
 
+  /**
+ * Generate organized directory structure for hidden gem files
+ */
+  getHiddenGemDirectoryStructure(hiddenGemId, type = 'images') {
+    return path.join('hidden-gems', `hidden-gem-${hiddenGemId}`, type);
+  }
+
+
+
+
   generateFileName(originalName, prefix = 'file') {
     const ext = path.extname(originalName);
     const timestamp = Date.now();
@@ -214,6 +224,120 @@ export class LocalFileStorage {
       return null;
     }
   }
+
+  /**
+ * Store hidden gem images
+ */
+  async storeHiddenGemImage(hiddenGemId, fileBuffer, originalName) {
+    try {
+      const dirPath = this.getHiddenGemDirectoryStructure(hiddenGemId, 'images');
+      const fileName = this.generateFileName(originalName, `hidden-gem-${hiddenGemId}`);
+      const fullDir = path.join(this.basePath, dirPath);
+      
+      // Ensure directory exists
+      await fs.promises.mkdir(fullDir, { recursive: true });
+      
+      const filePath = path.join(fullDir, fileName);
+      await fs.promises.writeFile(filePath, fileBuffer);
+      
+      // Return relative path for database storage
+      const relativePath = path.join(dirPath, fileName);
+      
+      return {
+        filePath: relativePath,
+        url: `/uploads/${relativePath.replace(/\\/g, '/')}`,
+        fileName,
+        size: fileBuffer.length,
+        mimeType: this.getMimeType(originalName),
+        hiddenGemId: hiddenGemId
+      };
+    } catch (error) {
+      console.error('Error storing hidden gem image:', error);
+      throw new Error(`Failed to store hidden gem image: ${error.message}`);
+    }
+  }
+
+  /**
+ * Store multiple hidden gem images
+ */
+  async storeHiddenGemImages(hiddenGemId, imageFiles) {
+    try {
+      const results = [];
+      
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const result = await this.storeHiddenGemImage(
+          hiddenGemId, 
+          file.buffer, 
+          file.originalname || `image_${i}.jpg`
+        );
+        results.push(result);
+      }
+      
+      return results;
+    } catch (error) {
+      console.error('Error storing hidden gem images:', error);
+      throw new Error(`Failed to store hidden gem images: ${error.message}`);
+    }
+  }
+
+  /**
+ * Delete all files for a specific hidden gem
+ */
+  async deleteHiddenGemFiles(hiddenGemId) {
+    try {
+      const hiddenGemDir = this.getHiddenGemDirectoryStructure(hiddenGemId);
+      const fullPath = path.join(this.basePath, hiddenGemDir);
+      
+      if (fs.existsSync(fullPath)) {
+        await fs.promises.rm(fullPath, { recursive: true, force: true });
+        console.log(`✅ Deleted hidden gem files for ID: ${hiddenGemId}`);
+        return true;
+      }
+      
+      console.log(`ℹ️ No files found for hidden gem ID: ${hiddenGemId}`);
+      return false;
+    } catch (error) {
+      console.error('❌ Error deleting hidden gem files:', error);
+      throw new Error(`Failed to delete hidden gem files: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Delete specific hidden gem image by URL or file path
+   */
+  async deleteHiddenGemImage(imageUrlOrPath) {
+    try {
+      // Extract relative path from URL
+      let relativePath = imageUrlOrPath;
+      if (imageUrlOrPath.startsWith('/uploads/')) {
+        relativePath = imageUrlOrPath.substring('/uploads/'.length);
+      }
+      
+      const fullPath = path.join(this.basePath, relativePath);
+      
+      // Check if file exists
+      if (!fs.existsSync(fullPath)) {
+        console.log(`ℹ️ Hidden gem image not found: ${fullPath}`);
+        return false;
+      }
+      
+      // Delete the file
+      await fs.promises.unlink(fullPath);
+      console.log(`✅ Successfully deleted hidden gem image: ${relativePath}`);
+      
+      // Try to clean up empty directories
+      await this.cleanupHiddenGemDirectories(path.dirname(fullPath));
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error deleting hidden gem image:', error);
+      return false;
+    }
+  }
+
+
+
 }
 
 export default new LocalFileStorage();
