@@ -68,6 +68,35 @@ export class UserRepository {
     }
   }
 
+  async updateProfile(userId, profileData) {
+    try {
+      console.log('Updating user profile in repository:', { userId, profileData });
+      
+      const updatedUser = await this.prisma.user.update({
+        where: { id: parseInt(userId) },
+        data: {
+          name: profileData.fullName,
+          email: profileData.email,
+          phone_no: profileData.phone
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone_no: true,
+          profile_picture_url: true,
+          bio: true
+        }
+      });
+
+      console.log('Profile updated successfully:', updatedUser);
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw new Error(`Failed to update user profile: ${error.message}`);
+    }
+  }
+
   async getGuideProfile(userId) {
     try {
       const guideProfile = await this.prisma.user.findUnique({
@@ -89,146 +118,12 @@ export class UserRepository {
               tour_packages: {
                 select: {
                   id: true,
-                  status: true,
-
-    async updateUserStatus(userId, status) {
-        try {
-            await this.prisma.user.update({
-                where: { id: userId },
-                data: { status }
-            });
-        } catch (error) {
-            console.error('Error updating user status:', error);
-            throw new Error('Failed to update user status');
+                  status: true
+                }
+              }
+            }
+          }
         }
-    }
-
-    async updateProfile(userId, profileData) {
-        try {
-            console.log('Updating user profile in repository:', { userId, profileData });
-            
-            const updatedUser = await this.prisma.user.update({
-                where: { id: parseInt(userId) },
-                data: {
-                    name: profileData.fullName,
-                    email: profileData.email,
-                    phone_no: profileData.phone
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    phone_no: true,
-                    profile_picture_url: true,
-                    bio: true
-                }
-            });
-
-            console.log('Profile updated successfully:', updatedUser);
-            return updatedUser;
-        } catch (error) {
-            console.error('Error updating user profile:', error);
-            throw new Error(`Failed to update user profile: ${error.message}`);
-        }
-    }
-
-    async getGuideProfile(userId) {
-        try {
-            const guideProfile = await this.prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    phone_no: true,
-                    bio: true,
-                    profile_picture_url: true,
-                    last_login: true,
-                    status: true,
-                    guides: {
-                        select: {
-                            id: true,
-                            years_of_experience: true,
-                            languages_spoken: true,
-                            tour_packages: {
-                                select: {
-                                    id: true,
-                                    status: true
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            return guideProfile;
-        } catch (error) {
-            console.error('Error fetching guide profile:', error);
-            throw new Error('Failed to fetch guide profile');
-        }
-    }
-
-    async getTravelerProfile(userId){
-        try {
-            const travelerProfile = await this.prisma.user.findUnique({
-                where:{id: userId},
-                select:{
-                    id:true,
-                    name:true,
-                    email:true,
-                    phone_no:true,
-                    bio:true,
-                    profile_picture_url:true,
-                    last_login:true,
-                    status:true,
-                }
-            });
-            return travelerProfile;
-        } catch (error) {
-            console.error('Error fetching traveler profile:', error);
-            throw new Error('Failed to fetch traveler profile');
-        }
-    }
-
-
-    async getGuidePerformance(userId) {
-        try {
-            // Get tour packages count
-            const toursConducted = await this.prisma.tourPackage.count({
-                where: {
-                    guide_id: userId,
-                    status: 'published'
-                }
-            });
-
-            // Get reviews and calculate rating
-            const reviews = await this.prisma.review.findMany({
-                where: {
-                    package: {
-                        guide_id: userId
-                    }
-                },
-                select: {
-                    rating: true
-                }
-            });
-
-            const rating = reviews.length > 0 
-                ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-                : 0;
-
-            // Get total earnings
-            const payments = await this.prisma.payment.findMany({
-                where: {
-                    package: {
-                        guide_id: userId
-                    },
-                    status: 'completed'
-                },
-              },
-            },
-          },
-        },
       });
 
       return guideProfile;
@@ -238,45 +133,65 @@ export class UserRepository {
     }
   }
 
+  async getTravelerProfile(userId) {
+    try {
+      const travelerProfile = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone_no: true,
+          bio: true,
+          profile_picture_url: true,
+          last_login: true,
+          status: true,
+        }
+      });
+      return travelerProfile;
+    } catch (error) {
+      console.error('Error fetching traveler profile:', error);
+      throw new Error('Failed to fetch traveler profile');
+    }
+  }
+
   async getGuidePerformance(userId) {
     try {
       // Get tour packages count
       const toursConducted = await this.prisma.tourPackage.count({
         where: {
           guide_id: userId,
-          status: "published",
-        },
+          status: 'published'
+        }
       });
 
       // Get reviews and calculate rating
       const reviews = await this.prisma.review.findMany({
         where: {
           package: {
-            guide_id: userId,
-          },
+            guide_id: userId
+          }
         },
         select: {
-          rating: true,
-        },
+          rating: true
+        }
       });
 
-      const rating =
-        reviews.length > 0
-          ? reviews.reduce((sum, review) => sum + review.rating, 0) /
-            reviews.length
-          : 0;
+      const rating = reviews.length > 0 
+        ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+        : 0;
 
       // Get total earnings
       const payments = await this.prisma.payment.findMany({
         where: {
           package: {
-            guide_id: userId,
+            guide_id: userId
           },
-          status: "completed",
+          status: 'completed'
         },
         select: {
-          amount: true,
-        },
+          amount: true
+        }
       });
 
       const totalEarnings = payments.reduce(
@@ -304,7 +219,6 @@ export class UserRepository {
   async getGuideDocuments(userId) {
     try {
       // In your schema, documents are stored in the travel_guide table as verification_documents
-      // This would need to be adjusted based on how you're actually storing documents
       const guide = await this.prisma.travelGuide.findUnique({
         where: { user_id: userId },
         select: {
@@ -328,30 +242,132 @@ export class UserRepository {
       throw new Error("Failed to fetch guide documents");
     }
   }
-}
 
-    async getGuideId(userId) {
-        try {
-            const guide = await this.prisma.travelGuide.findUnique({
-                where: {
-                    user_id: userId
-                },
-                select: {
-                    id: true
-                }
-            });
-
-            if (!guide) {
-                throw new Error('Guide not found for this user');
-            }
-
-            return {
-                success: true,
-                guideId: guide.id
-            };
-        } catch (error) {
-            console.error('Error in getGuideId repository:', error);
-            throw new Error(`Failed to get guide ID: ${error.message}`);
+  async getGuideId(userId) {
+    try {
+      const guide = await this.prisma.travelGuide.findUnique({
+        where: {
+          user_id: userId
+        },
+        select: {
+          id: true
         }
+      });
+
+      if (!guide) {
+        throw new Error('Guide not found for this user');
+      }
+
+      return {
+        success: true,
+        guideId: guide.id
+      };
+    } catch (error) {
+      console.error('Error in getGuideId repository:', error);
+      throw new Error(`Failed to get guide ID: ${error.message}`);
     }
+  }
+
+  // Add missing method to get user by ID
+  async getUserById(userId) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          role: true,
+          status: true,
+          email: true,
+          phone_no: true,
+          name: true,
+          registered_date: true,
+          profile_picture_url: true,
+          bio: true,
+          last_login: true,
+        }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      return user;
+    } catch (error) {
+      console.error('Error fetching user by ID:', error);
+      throw new Error('Failed to fetch user');
+    }
+  }
+
+  // Add method to count total users for pagination
+  async getUsersCount(filterOptions = {}) {
+    try {
+      const whereClause = {};
+
+      if (filterOptions?.role) {
+        whereClause.role = filterOptions.role;
+      }
+
+      if (filterOptions?.status) {
+        whereClause.status = filterOptions.status;
+      }
+
+      if (filterOptions?.search) {
+        whereClause.OR = [
+          { name: { contains: filterOptions.search, mode: "insensitive" } },
+          { email: { contains: filterOptions.search, mode: "insensitive" } },
+        ];
+      }
+
+      const count = await this.prisma.user.count({
+        where: whereClause
+      });
+
+      return count;
+    } catch (error) {
+      console.error('Error counting users:', error);
+      throw new Error('Failed to count users');
+    }
+  }
+
+  // Add method to update user profile picture
+  async updateProfilePicture(userId, profilePictureUrl) {
+    try {
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          profile_picture_url: profilePictureUrl
+        },
+        select: {
+          id: true,
+          profile_picture_url: true
+        }
+      });
+
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating profile picture:', error);
+      throw new Error('Failed to update profile picture');
+    }
+  }
+
+  // Add method to update user bio
+  async updateBio(userId, bio) {
+    try {
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          bio: bio
+        },
+        select: {
+          id: true,
+          bio: true
+        }
+      });
+
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating user bio:', error);
+      throw new Error('Failed to update bio');
+    }
+  }
 }
