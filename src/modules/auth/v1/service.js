@@ -72,7 +72,7 @@ class AuthService {
   }
 
   async logout(token) {
-    console.log('Logout requested', token ? `with token: ${token.substring(0, 10)}...` : 'without token');
+    // console.log('Logout requested', token ? with token: ${token.substring(0, 10)}... : 'without token');
     
     // In a production app with JWT, you would:
     // 1. Add token to blacklist/revocation list

@@ -61,6 +61,28 @@ static async signup(req, res, next) {
       next(error);
     }
   }
+
+  static async logout(req, res, next) {
+    try {
+      // Extract token from Authorization header if present
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      
+      await new AuthService().logout(token);
+      
+      // Always return a proper JSON response
+      res.json({
+        success: true,
+        message: 'Logged out successfully'
+      });
+    } catch (error) {
+      // Handle errors properly
+      res.status(500).json({
+        success: false,
+        message: 'Logout failed',
+        error: error.message
+      });
+    }
+  }
 }
 
 export { AuthController };

@@ -240,6 +240,198 @@ class HiddenGemRepository {
             throw error;
         }
     }
+
+    // NEW METHOD: Find hidden gems for moderation with filtering
+    async findForModeration(filters) {
+        try {
+            const {
+                status,
+                search,
+                location,
+                page,
+                limit,
+                sortBy,
+                sortOrder
+            } = filters;
+
+            const skip = (page - 1) * limit;
+
+            // Build where clause
+            const where = {
+                status: status === 'all' ? undefined : status
+            };
+
+            // Add search filter
+            if (search) {
+                where.OR = [
+                    { title: { contains: search, mode: 'insensitive' } },
+                    { description: { contains: search, mode: 'insensitive' } }
+                ];
+            }
+
+            // Add location filter
+            if (location && location !== 'all') {
+                where.location = {
+                    OR: [
+                        { city: { contains: location, mode: 'insensitive' } },
+                        { district: { contains: location, mode: 'insensitive' } },
+                        { province: { contains: location, mode: 'insensitive' } }
+                    ]
+                };
+            }
+
+            // Get hidden places with pagination
+            const hiddenPlaces = await prisma.hiddenPlace.findMany({
+                where,
+                include: {
+                    traveler: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    profile_picture_url: true,
+                                },
+                            },
+                        },
+                    },
+                    location: {
+                        select: {
+                            id: true,
+                            latitude: true,
+                            longitude: true,
+                            address: true,
+                            city: true,
+                            province: true,
+                            district: true,
+                            postal_code: true,
+                        },
+                    },
+                    picture: {
+                        select: {
+                            id: true,
+                            url: true,
+                            media_type: true,
+                            width: true,
+                            height: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    [sortBy]: sortOrder
+                },
+                skip,
+                take: limit,
+            });
+
+            // Get total count for pagination
+            const totalCount = await prisma.hiddenPlace.count({ where });
+
+            return {
+                hiddenPlaces,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                currentPage: page,
+                hasNextPage: page < Math.ceil(totalCount / limit),
+                hasPrevPage: page > 1
+            };
+        } catch (error) {
+            console.error('findForModeration repository error:', error.message);
+            throw error;
+        }
+    }
+
+    // NEW METHOD: Update hidden gem status
+    async updateStatus(updateData) {
+        try {
+            const { hiddenGemId, status, rejectionReason, verifiedAt } = updateData;
+
+            const updatedGem = await prisma.hiddenPlace.update({
+                where: {
+                    id: hiddenGemId
+                },
+                data: {
+                    status,
+                    rejection_reason: rejectionReason,
+                    verified_at: verifiedAt,
+                    updated_at: new Date()
+                },
+                include: {
+                    traveler: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    profile_picture_url: true,
+                                },
+                            },
+                        },
+                    },
+                    location: {
+                        select: {
+                            id: true,
+                            latitude: true,
+                            longitude: true,
+                            address: true,
+                            city: true,
+                            province: true,
+                            district: true,
+                            postal_code: true,
+                        },
+                    },
+                    picture: {
+                        select: {
+                            id: true,
+                            url: true,
+                            media_type: true,
+                            width: true,
+                            height: true,
+                        },
+                    },
+                }
+            });
+
+            return updatedGem;
+        } catch (error) {
+            console.error('updateStatus repository error:', error.message);
+            throw error;
+        }
+    }
+
+    // NEW METHOD: Get moderation statistics
+    async getModerationStats() {
+        try {
+            const stats = await prisma.hiddenPlace.groupBy({
+                by: ['status'],
+                _count: {
+                    id: true
+                }
+            });
+
+            // Convert to more usable format
+            const statsObject = {
+                pending: 0,
+                approved: 0,
+                rejected: 0,
+                draft: 0,
+                total: 0
+            };
+
+            stats.forEach(stat => {
+                statsObject[stat.status] = stat._count.id;
+                statsObject.total += stat._count.id;
+            });
+
+            return statsObject;
+        } catch (error) {
+            console.error('getModerationStats repository error:', error.message);
+            throw error;
+        }
+    }
+
 }
 
 const hiddenGemRepository = new HiddenGemRepository();
