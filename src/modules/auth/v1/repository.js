@@ -56,11 +56,24 @@ class AuthRepository {
 
       switch (userData.role) {
         case "travel_guide":
+          // Normalize verification_documents to a string array
+          const verificationDocs = (() => {
+            const v = userData.verification_documents;
+            if (!v) return [];
+            if (Array.isArray(v)) return v;
+            if (typeof v === "string") return [v];
+            return [];
+          })();
+
           await prisma.travelGuide.create({
             data: {
               user_id: user.id,
-              years_of_experience: userData.years_of_experience || 0,
-              verification_documents: userData.verification_documents,
+              years_of_experience: Number.isInteger(
+                userData.years_of_experience
+              )
+                ? userData.years_of_experience
+                : parseInt(userData.years_of_experience, 10) || 0,
+              verification_documents: verificationDocs,
               languages_spoken: userData.languages_spoken || ["English"],
             },
           });

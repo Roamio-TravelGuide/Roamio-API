@@ -10,36 +10,21 @@ class AuthController {
     }
   }
 
-   static async logout(req, res, next) {
-    try {
-      // Extract token from Authorization header if present
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      
-      await new AuthService().logout(token);
-      
-      // Always return a proper JSON response
-      res.json({
-        success: true,
-        message: 'Logged out successfully'
-      });
-    } catch (error) {
-      // Handle errors properly
-      res.status(500).json({
-        success: false,
-        message: 'Logout failed',
-        error: error.message
-      });
-    }
-  }
+static async signup(req, res, next) {
+  try {
+    const userData = req.body;
 
-  static async signup(req, res, next) {
-    try {
-      const result = await new AuthService().signup(req.body);
-      res.status(201).json(result);
-    } catch (error) {
-      next({ status: 409, message: error.message });
+    // If guide uploads document
+    if (req.file) {
+      userData.verification_documents = `/uploads/guideDocuments/${req.file.filename}`;
     }
+
+    const result = await new AuthService().signup(userData);
+    res.status(201).json(result);
+  } catch (error) {
+    next({ status: 409, message: error.message });
   }
+}
 
   // Send password reset email/token
   static async forgotPassword(req, res, next) {
