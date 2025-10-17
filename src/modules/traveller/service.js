@@ -12,6 +12,10 @@ export class TravellerService {
     return await this.travellerRepository.getPackagesForTraveler(travelerId);
   }
 
+  async getMyPaidTrips(travelerId) {
+    return await this.travellerRepository.getPaidPackagesForTraveler(travelerId);
+  }
+
   async findNearbyPois() {
     // Show all POIs without any conditions
     const query = `

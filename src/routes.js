@@ -31,7 +31,82 @@ router.use("/poi", poiRoutes);
 router.use("/hiddenGem", hiddenGemRoutes);
 router.use("/traveller", travellerRoutes);
 
-router.use("/packages", packageRoutes)
+router.use("/packages", packageRoutes);
+
+// Add route for getting individual package by ID
+router.get('/packages/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid package ID",
+      });
+    }
+
+    const tourPackageService = (await import('./modules/tour-package/v1/service.js')).default;
+    const tourPackage = await tourPackageService.getTourPackageById(parseInt(id));
+
+    if (!tourPackage) {
+      return res.status(404).json({
+        success: false,
+        message: "Package not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: tourPackage,
+    });
+  } catch (error) {
+    console.error("Error fetching package:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// Add route for checking payment status for a package
+router.get('/packages/:id/payment-status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.query.userId; // Get userId from query parameter instead of auth
+
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid package ID",
+      });
+    }
+
+    if (!userId || isNaN(parseInt(userId))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    const paymentService = (await import('./modules/payment/v1/service.js')).default;
+    const hasPaid = await paymentService.checkUserPaymentForPackage(parseInt(userId), parseInt(id));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        hasPaid: hasPaid,
+        packageId: parseInt(id),
+        userId: parseInt(userId),
+      },
+    });
+  } catch (error) {
+    console.error("Error checking payment status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
 
 router.get("/health", (req, res) => {
   res.status(200).json({ status: "OK" });

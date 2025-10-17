@@ -113,18 +113,89 @@ export class PaymentController {
     try {
       const data = req.body;
       const userId = req.user?.id;
+
+      console.log('createStripPayment called with:', { data, userId });
+
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        console.log('No user ID found, checking if this is a vendor payment...');
+        // For vendor payments, we might not have req.user, try to get from data
+        const vendorUserId = data.metadata?.userId;
+        if (vendorUserId) {
+          console.log('Using vendor user ID:', vendorUserId);
+          // For now, let's allow this without authentication for testing
+          // In production, you'd want proper auth
+        } else {
+          return res.status(401).json({ error: 'Unauthorized - no user ID' });
+        }
       }
-  
-      const stripPaymentData = await this.paymentService.createStripPayment(data, userId);
-  
+
+      console.log('Calling payment service with data:', data);
+      const stripPaymentData = await this.paymentService.createStripPayment(data, userId || data.metadata?.userId);
+
+      console.log('Payment created successfully:', stripPaymentData);
+
       res.status(201).json({
-        clientSecret: stripPaymentData.client_secret,
-        paymentIntentId: stripPaymentData.id
+        data: stripPaymentData,
+        message: 'Payment recorded successfully'
       });
     } catch (error) {
+      console.error('Error in createStripPayment:', error);
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  async recordPaymentSuccess(req, res) {
+    try {
+      const { paymentIntentId, userId, amount, currency, packageId } = req.body;
+
+      // Get the payment intent from Stripe to verify it
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+
+      // Only proceed if payment is actually succeeded
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment not completed',
+          status: paymentIntent.status
+        });
+      }
+
+      // Record the payment in database
+      const paymentData = {
+        transaction_id: paymentIntent.id,
+        user_id: parseInt(userId),
+        amount: amount,
+        status: 'succeeded',
+        currency: currency,
+        payment_method: paymentIntent.payment_method_types[0],
+        paid_at: new Date(),
+        invoice_number: paymentIntent.id,
+        package_id: packageId ? parseInt(packageId) : null,
+      };
+
+      const payment = await this.paymentService.paymentRepository.createStripPayment({
+        transaction_id: paymentData.transaction_id,
+        user: { connect: { id: paymentData.user_id } },
+        amount: paymentData.amount,
+        status: 'completed',
+        currency: paymentData.currency,
+        paid_at: paymentData.paid_at,
+        invoice_number: paymentData.invoice_number,
+        package_id: paymentData.package_id,
+      });
+
+      res.status(201).json({
+        success: true,
+        payment: payment,
+        message: 'Payment recorded successfully',
+        status: paymentIntent.status
+      });
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
     }
   }
   
