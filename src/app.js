@@ -22,7 +22,10 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  methods: ['PATCH','DELETE','PUT']
+  origin: true, // Allow all origins for development
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  credentials: true
 }));
 
 
@@ -36,7 +39,22 @@ app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
-app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads'), {
+  setHeaders: (res, path) => {
+    // Set proper MIME types for audio files
+    if (path.endsWith('.mp3')) {
+      res.setHeader('Content-Type', 'audio/mpeg');
+    } else if (path.endsWith('.wav')) {
+      res.setHeader('Content-Type', 'audio/wav');
+    } else if (path.endsWith('.ogg')) {
+      res.setHeader('Content-Type', 'audio/ogg');
+    }
+    // Set CORS headers for all files
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+}));
 
 
 // Error handling middleware - MUST BE LAST

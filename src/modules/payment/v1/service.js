@@ -74,23 +74,43 @@ export class PaymentService {
     return await this.paymentRepository.createPayment(paymentData);
   }
   async createStripPayment(paymentIntentData, userId) {
-    // Use paymentIntent directly, do NOT destructure `data`
-    const stripPaymentData = {
-      transaction_id: paymentIntentData.id,
-  
-      user: { connect: { id: userId } },
-      amount: paymentIntentData.amount / 100, // Convert from cents to dollars
-      status: paymentIntentData.status === "succeeded" ? 'completed' : 'pending',
-      currency: paymentIntentData.currency,
-  
-      paid_at: paymentIntentData.status === "succeeded" ? new Date(paymentIntentData.created * 1000) : null,
-      invoice_number: paymentIntentData.id,
-      package_id: paymentIntentData.metadata?.packageId ? parseInt(paymentIntentData.metadata.packageId) : null,
-  
-    };
-  
+    console.log('createStripPayment service called with:', { paymentIntentData, userId });
+
+    // Handle different data structures from mobile vs web
+    let stripPaymentData;
+
+    if (paymentIntentData.clientSecret && paymentIntentData.paymentIntentId) {
+      // Mobile format
+      stripPaymentData = {
+        transaction_id: paymentIntentData.paymentIntentId,
+        user_id: parseInt(userId),
+        amount: paymentIntentData.amount ? paymentIntentData.amount / 100 : 0,
+        status: paymentIntentData.status === "succeeded" ? 'completed' : 'pending',
+        currency: paymentIntentData.currency || 'usd',
+        paid_at: paymentIntentData.status === "succeeded" ? new Date() : null,
+        invoice_number: paymentIntentData.paymentIntentId,
+        package_id: paymentIntentData.metadata?.packageId ? parseInt(paymentIntentData.metadata.packageId) : null,
+      };
+    } else {
+      // Web format - use paymentIntent directly
+      stripPaymentData = {
+        transaction_id: paymentIntentData.id,
+        user_id: parseInt(userId),
+        amount: paymentIntentData.amount / 100, // Convert from cents to dollars
+        status: paymentIntentData.status === "succeeded" ? 'completed' : 'pending',
+        currency: paymentIntentData.currency,
+        paid_at: paymentIntentData.status === "succeeded" ? new Date(paymentIntentData.created * 1000) : null,
+        invoice_number: paymentIntentData.id,
+        package_id: paymentIntentData.metadata?.packageId ? parseInt(paymentIntentData.metadata.packageId) : null,
+      };
+    }
+
+    console.log('Creating payment with data:', stripPaymentData);
+
     const payment = await this.paymentRepository.createStripPayment(stripPaymentData);
-    return paymentIntentData; // Return the paymentIntentData for clientSecret
+    console.log('Payment created in database:', payment);
+
+    return payment; // Return the created payment record
   }
 
   async handlePaymentFailure(paymentIntent) {
@@ -98,6 +118,28 @@ export class PaymentService {
 
     // Update payment status in database
     return await this.paymentRepository.updatePaymentStatus(id, 'failed');
+  }
+
+  async checkUserPaymentForPackage(userId, packageId) {
+    try {
+      console.log('Checking payment for user:', userId, 'package:', packageId);
+
+      const payment = await prisma.payment.findFirst({
+        where: {
+          user_id: userId,
+          package_id: packageId,
+          status: 'completed'
+        }
+      });
+
+      const hasPaid = payment !== null;
+      console.log('Payment check result:', hasPaid);
+
+      return hasPaid;
+    } catch (error) {
+      console.error('Error checking user payment for package:', error);
+      return false;
+    }
   }
 }
 

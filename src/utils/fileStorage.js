@@ -10,7 +10,7 @@ export class LocalFileStorage {
   }
 
   ensureDirectoryStructure() {
-    // Create main uploads directory
+    // Create main upAloads directory
     if (!fs.existsSync(this.basePath)) {
       fs.mkdirSync(this.basePath, { recursive: true });
     }

@@ -257,13 +257,37 @@ export class PaymentRepository {
 
   async createStripPayment(stripPaymentData) {
     try {
+      console.log('Repository createStripPayment called with:', stripPaymentData);
+
+      const paymentData = {
+        transaction_id: stripPaymentData.transaction_id,
+        user_id: stripPaymentData.user_id,
+        amount: stripPaymentData.amount,
+        status: stripPaymentData.status,
+        currency: stripPaymentData.currency,
+        paid_at: stripPaymentData.paid_at,
+        invoice_number: stripPaymentData.invoice_number,
+      };
+
+      // Only add package_id if it's not null
+      if (stripPaymentData.package_id !== null && stripPaymentData.package_id !== undefined) {
+        paymentData.package_id = stripPaymentData.package_id;
+      }
+
       const payment = await this.prisma.payment.create({
-        data: stripPaymentData
+        data: paymentData
       });
+
+      console.log('Payment created successfully in repository:', payment);
       return payment;
     } catch (error) {
       console.error("Error creating strip payment:", error);
-      throw new Error("Failed to create strip payment");
+      console.error("Error details:", {
+        message: error.message,
+        code: error.code,
+        meta: error.meta
+      });
+      throw new Error(`Failed to create strip payment: ${error.message}`);
     }
   }
 

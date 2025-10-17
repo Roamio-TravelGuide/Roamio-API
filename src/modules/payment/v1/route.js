@@ -15,14 +15,19 @@ router.get("/revenue", (req, res) =>
   paymentController.getRevenue(req, res)
 );
 
-// 🔹 TEMP: removed authenticate so you can test Stripe
-router.post("/create-payment-intent", (req, res) =>
+// Authenticate to get user ID for metadata
+router.post("/create-payment-intent", authenticate, (req, res) =>
   paymentController.createPaymentIntent(req, res)
 );
 // 🔹 TEMP: removed authenticate so you can test Stripe
 router.post("/create-strip-payment", authenticate, (req, res) =>
     paymentController.createStripPayment(req, res)
 
+);
+
+// Record successful payment
+router.post("/record-success", (req, res) =>
+    paymentController.recordPaymentSuccess(req, res)
 );
 
 // Webhook (Stripe doesn't use auth)
