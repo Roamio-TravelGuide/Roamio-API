@@ -31,9 +31,7 @@ router.use("/poi", poiRoutes);
 router.use("/hiddenGem", hiddenGemRoutes);
 router.use("/traveller", travellerRoutes);
 
-router.use("/packages", packageRoutes);
-
-// Add route for getting individual package by ID
+// Add route for getting individual package by ID (must be before /packages route to avoid conflicts)
 router.get('/packages/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -68,45 +66,8 @@ router.get('/packages/:id', async (req, res) => {
   }
 });
 
-// Add route for checking payment status for a package
-router.get('/packages/:id/payment-status', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.query.userId; // Get userId from query parameter instead of auth
+router.use("/packages", packageRoutes);
 
-    if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid package ID",
-      });
-    }
-
-    if (!userId || isNaN(parseInt(userId))) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID",
-      });
-    }
-
-    const paymentService = (await import('./modules/payment/v1/service.js')).default;
-    const hasPaid = await paymentService.checkUserPaymentForPackage(parseInt(userId), parseInt(id));
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        hasPaid: hasPaid,
-        packageId: parseInt(id),
-        userId: parseInt(userId),
-      },
-    });
-  } catch (error) {
-    console.error("Error checking payment status:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-});
 
 router.get("/health", (req, res) => {
   res.status(200).json({ status: "OK" });

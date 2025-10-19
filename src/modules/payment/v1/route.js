@@ -30,6 +30,11 @@ router.post("/record-success", (req, res) =>
     paymentController.recordPaymentSuccess(req, res)
 );
 
+// Confirm payment intent with payment method
+router.post("/confirm-payment", authenticate, (req, res) =>
+    paymentController.confirmPaymentIntent(req, res)
+);
+
 // Webhook (Stripe doesn't use auth)
 /*
 router.post("/webhook", (req, res) =>
