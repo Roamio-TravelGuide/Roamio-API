@@ -29,4 +29,9 @@ export class PackagesService {
     async getRecommendedTours(limit = 6, userId = null) {
         return await this.packagesRepository.findRecommendedTours(limit, userId);
     }
+
+    // Check payment status for a specific package and user
+    async checkPaymentStatus(packageId, userId) {
+        return await this.packagesRepository.checkPaymentStatus(packageId, userId);
+    }
 }

@@ -318,4 +318,47 @@ export class PackagesRepository {
             };
         });
     }
+
+    // Check payment status for a specific package and user
+    async checkPaymentStatus(packageId, userId) {
+        try {
+            console.log(`Checking payment status for package ${packageId} and user ${userId}`);
+            
+            // Check if there's a completed payment for this package and user
+            const payment = await this.prisma.payment.findFirst({
+                where: {
+                    package_id: packageId,
+                    user_id: userId,
+                    status: 'completed'
+                },
+                select: {
+                    transaction_id: true,
+                    amount: true,
+                    currency: true,
+                    paid_at: true,
+                    status: true
+                }
+            });
+
+            const hasPaid = payment !== null;
+            
+            console.log(`Payment status result: hasPaid=${hasPaid}, payment=${JSON.stringify(payment)}`);
+
+            return {
+                packageId: packageId,
+                userId: userId,
+                hasPaid: hasPaid,
+                paymentDetails: payment ? {
+                    transactionId: payment.transaction_id,
+                    amount: payment.amount,
+                    currency: payment.currency,
+                    paidAt: payment.paid_at,
+                    status: payment.status
+                } : null
+            };
+        } catch (error) {
+            console.error('Error in checkPaymentStatus:', error);
+            throw error;
+        }
+    }
 }

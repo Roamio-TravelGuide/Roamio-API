@@ -202,4 +202,233 @@ export class TravellerRepository {
     }
     return uniquePackages;
   }
+
+  // Review methods
+  async createReview(reviewData) {
+    const { traveler_id, package_id, rating, comments, user_id } = reviewData;
+    
+    // Check if user has already reviewed this package
+    const existingReview = await this.prisma.review.findFirst({
+      where: {
+        traveler_id: traveler_id,
+        package_id: package_id
+      }
+    });
+
+    if (existingReview) {
+      throw new Error('You have already reviewed this package');
+    }
+
+    // Check if user has purchased this package
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        user_id: user_id,
+        package_id: package_id,
+        status: 'completed'
+      }
+    });
+
+    if (!payment) {
+      throw new Error('You can only review packages you have purchased');
+    }
+
+    return await this.prisma.review.create({
+      data: {
+        traveler_id,
+        package_id,
+        rating,
+        comments,
+        user_id
+      },
+      include: {
+        traveler: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                profile_picture_url: true
+              }
+            }
+          }
+        },
+        package: {
+          select: {
+            title: true
+          }
+        }
+      }
+    });
+  }
+
+  async updateReview(reviewId, userId, updateData) {
+    // Check if review exists and belongs to user
+    const existingReview = await this.prisma.review.findFirst({
+      where: {
+        id: reviewId,
+        user_id: userId
+      }
+    });
+
+    if (!existingReview) {
+      throw new Error('Review not found or you do not have permission to update it');
+    }
+
+    return await this.prisma.review.update({
+      where: {
+        id: reviewId
+      },
+      data: updateData,
+      include: {
+        traveler: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                profile_picture_url: true
+              }
+            }
+          }
+        },
+        package: {
+          select: {
+            title: true
+          }
+        }
+      }
+    });
+  }
+
+  async deleteReview(reviewId, userId) {
+    // Check if review exists and belongs to user
+    const existingReview = await this.prisma.review.findFirst({
+      where: {
+        id: reviewId,
+        user_id: userId
+      }
+    });
+
+    if (!existingReview) {
+      throw new Error('Review not found or you do not have permission to delete it');
+    }
+
+    return await this.prisma.review.delete({
+      where: {
+        id: reviewId
+      }
+    });
+  }
+
+  async getReviewsByPackage(packageId, limit = 10, offset = 0) {
+    return await this.prisma.review.findMany({
+      where: {
+        package_id: packageId
+      },
+      include: {
+        traveler: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                profile_picture_url: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        date: 'desc'
+      },
+      take: limit,
+      skip: offset
+    });
+  }
+
+  async getReviewsByUser(userId, limit = 10, offset = 0) {
+    return await this.prisma.review.findMany({
+      where: {
+        user_id: userId
+      },
+      include: {
+        package: {
+          select: {
+            id: true,
+            title: true,
+            cover_image: {
+              select: {
+                url: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        date: 'desc'
+      },
+      take: limit,
+      skip: offset
+    });
+  }
+
+  async getReviewById(reviewId) {
+    return await this.prisma.review.findUnique({
+      where: {
+        id: reviewId
+      },
+      include: {
+        traveler: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                profile_picture_url: true
+              }
+            }
+          }
+        },
+        package: {
+          select: {
+            title: true,
+            cover_image: {
+              select: {
+                url: true
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  async getPackageRatingStats(packageId) {
+    const stats = await this.prisma.review.groupBy({
+      by: ['rating'],
+      where: {
+        package_id: packageId
+      },
+      _count: {
+        rating: true
+      }
+    });
+
+    const totalReviews = await this.prisma.review.count({
+      where: {
+        package_id: packageId
+      }
+    });
+
+    const averageRating = await this.prisma.review.aggregate({
+      where: {
+        package_id: packageId
+      },
+      _avg: {
+        rating: true
+      }
+    });
+
+    return {
+      totalReviews,
+      averageRating: averageRating._avg.rating || 0,
+      ratingDistribution: stats
+    };
+  }
 }

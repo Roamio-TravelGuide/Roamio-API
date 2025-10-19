@@ -16,4 +16,7 @@ router.get('/trending', packagesController.getTrendingTours.bind(packagesControl
 // Recommended tours
 router.get('/recommended', packagesController.getRecommendedTours.bind(packagesController));
 
+// Check payment status for a specific package
+router.get('/:packageId/payment-status', packagesController.checkPaymentStatus.bind(packagesController));
+
 export default router;

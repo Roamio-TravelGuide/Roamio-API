@@ -5,6 +5,37 @@ export class PackagesController {
         this.packagesService = new PackagesService();
     }
 
+    // Check payment status for a specific package and user
+    async checkPaymentStatus(req, res) {
+        try {
+            const { packageId } = req.params;
+            const { userId } = req.query;
+
+            if (!packageId || !userId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Package ID and User ID are required'
+                });
+            }
+
+            const paymentStatus = await this.packagesService.checkPaymentStatus(
+                parseInt(packageId),
+                parseInt(userId)
+            );
+
+            res.json({
+                success: true,
+                data: paymentStatus
+            });
+        } catch (error) {
+            console.error('Error in checkPaymentStatus:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    }
+
     // Get nearby packages by location
     async getNearbyPackages(req, res) {
         try {
