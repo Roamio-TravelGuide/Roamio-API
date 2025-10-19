@@ -17,8 +17,8 @@ router.get('/guide/:guideId', hiddenGemController.getHiddenGemById);
 
 router.post('/create', authenticate, upload.array('images', 10), hiddenGemController.createNewHiddenGem);
 
-router.get('/moderation', hiddenGemController.getHiddenGemsForModeration);
-router.patch('/:id/status', hiddenGemController.updateHiddenGemStatus);
-router.get('/moderation/stats', hiddenGemController.getModerationStats);
+router.get('/moderation', authenticate, hiddenGemController.getHiddenGemsForModeration);
+router.patch('/:id/status', authenticate, hiddenGemController.updateHiddenGemStatus);
+router.get('/moderation/stats', authenticate, hiddenGemController.getModerationStats);
 
 export default router;

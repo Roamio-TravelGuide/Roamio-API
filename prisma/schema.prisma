@@ -186,7 +186,7 @@ model HiddenPlace {
   picture_id       Int?
   description      String?
   title            String
-  status           HiddenPlaceStatus @default(draft)
+  status           HiddenPlaceStatus @default(pending)
   created_at       DateTime          @default(now())
   verified_at      DateTime?
   rejection_reason String?
@@ -335,7 +335,6 @@ enum PaymentStatus {
 }
 
 enum HiddenPlaceStatus {
-  draft
   pending
   approved
   rejected
