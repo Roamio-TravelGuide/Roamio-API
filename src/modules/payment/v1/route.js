@@ -5,6 +5,8 @@ import authenticate from "../../../middleware/auth.js";
 const router = Router();
 const paymentController = new PaymentController();
 router.get("/revenue", (req, res) => paymentController.getRevenue(req, res));
+router.get("/revenue/:id", (req, res) => paymentController.getRevenueById(req, res));
+router.get("/showPaidPackages/:id", (req, res) => paymentController.getPaidPackagesById(req, res));
 router.get("/top-performer-revenue", (req, res) => paymentController.getTopPerformerRevenue(req, res));
 router.get("/top-selling-package", (req, res) => paymentController.getTopSellingPackage(req, res));
 router.get("/sold-packages-count", (req, res) => paymentController.getSoldPackagesCount(req, res));

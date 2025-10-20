@@ -99,6 +99,91 @@ export class PaymentRepository {
     }
   }
 
+  async getRevenueById(id){
+    try {
+      // Get revenue for a travel guide by joining through tour_package
+      const revenueById = await this.prisma.$queryRaw`
+        SELECT
+          tg.user_id as guide_id,
+          u.name as guide_name,
+          SUM(p.amount)::float as total_revenue,
+          COUNT(DISTINCT p.transaction_id)::int as total_payments,
+          COUNT(DISTINCT p.package_id)::int as packages_sold
+        FROM "payment" p
+        JOIN "tour_package" tp ON p.package_id = tp.id
+        JOIN "travel_guide" tg ON tp.guide_id = tg.id
+        JOIN "user" u ON tg.user_id = u.id
+        WHERE p.status = 'completed' 
+          AND tp.status = 'published'
+          AND tg.user_id = ${id}
+        GROUP BY tg.user_id, u.name
+      `;
+
+      // Calculate weekly revenue for this guide (last 7 days)
+      const now = new Date();
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 6); // last 7 days including today
+      weekAgo.setHours(0, 0, 0, 0);
+
+      const weeklyResult = await this.prisma.$queryRaw`
+        SELECT
+          COALESCE(SUM(p.amount), 0)::float as weekly_revenue
+        FROM "payment" p
+        JOIN "tour_package" tp ON p.package_id = tp.id
+        JOIN "travel_guide" tg ON tp.guide_id = tg.id
+        WHERE p.status = 'completed'
+          AND tp.status = 'published'
+          AND tg.user_id = ${id}
+          AND p.paid_at >= ${weekAgo}
+          AND p.paid_at <= ${now}
+      `;
+
+      // Attach weekly_revenue to the first result (if any)
+      if (revenueById && revenueById.length > 0) {
+        revenueById[0].weekly_revenue = weeklyResult[0]?.weekly_revenue || 0;
+      }
+      return revenueById;
+    } catch (error) {
+      console.error("Error fetching revenue by id:", {
+        error: error.message,
+        stack: error.stack,
+        prismaError: error.code,
+      });
+      throw new Error("Failed to fetch revenue by id");
+    }
+  }
+
+  async getPaidPackagesById(id){
+    try {
+      const paidPackages = await this.prisma.$queryRaw`
+        SELECT
+          p.transaction_id,
+          p.amount,
+          p.status,
+          p.currency,
+          p.paid_at,
+          tp.id as package_id,
+          tp.title as package_title
+        FROM "payment" p
+        LEFT JOIN "tour_package" tp ON p.package_id = tp.id
+        LEFT JOIN "travel_guide" tg ON tp.guide_id = tg.id
+        WHERE p.status = 'completed'
+          AND tg.user_id = ${id}
+        ORDER BY p.paid_at DESC
+      `;
+      console.log(`Paid packages found for guide ${id}: ${paidPackages?.length ?? 0}`);
+      return paidPackages;
+    } catch (error) {
+      console.error("Error fetching paid packages by id:", {
+        message: error?.message || error,
+        stack: error?.stack,
+        prismaError: error?.code,
+      });
+      throw new Error("Failed to fetch paid packages by id");
+    }
+  }
+
+
   async getSoldPackagesCount() {
   try {
     // Get current date

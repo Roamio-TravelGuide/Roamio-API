@@ -18,6 +18,17 @@ export class PaymentService {
     return this.paymentRepository.getTotalRevenue();
   }
 
+  
+  async getRevenueById(id){
+    const revenueById = await this.paymentRepository.getRevenueById(id);
+    return revenueById;
+  }
+
+  async getPaidPackagesById(id){
+    const paidPackages = await this.paymentRepository.getPaidPackagesById(id);
+    return paidPackages;
+  }
+
   async getSoldPackagesCount(){
     return this.paymentRepository.getSoldPackagesCount();
   }
