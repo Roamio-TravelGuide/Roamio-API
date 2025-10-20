@@ -93,7 +93,7 @@ export class PaymentController {
         amount: Math.round(amount * 100), // Convert to cents
         currency,
         payment_method_types: ['card'], // Explicitly specify card payments only
-        confirmation_method: 'manual', // Manual confirmation to avoid redirect issues
+        confirmation_method: 'automatic', // Automatic confirmation for web payments
         capture_method: 'automatic', // Automatically capture when confirmed
         metadata: {
           userId: req.user?.id,
