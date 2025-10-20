@@ -1,4 +1,5 @@
 import tourPackageService from "./service.js";
+import NotificationService from "../../notification/v1/service.js";
 
 function parseTourRequestData(req) {
   const files = req.files;
@@ -223,6 +224,57 @@ class TourPackageController {
         return;
       }
 
+      // Create notification for the guide
+      try {
+        console.log("=== NOTIFICATION CREATION DEBUG ===");
+        const notificationService = new NotificationService();
+
+        // Get the guide ID from the updated package
+        const guideId = updatedPackage.guide_id;
+        console.log("Guide ID from updated package:", guideId);
+        console.log("Status:", status);
+        console.log("Rejection reason:", rejection_reason);
+
+        if (guideId) {
+          const notificationData = {
+            userId: guideId,
+            type: status === "published" ? "tour_approved" : "tour_rejected",
+            title:
+              status === "published"
+                ? "Tour Package Approved"
+                : "Tour Package Rejected",
+            message:
+              status === "published"
+                ? `Your tour package "${updatedPackage.title}" has been approved and is now published!`
+                : `Your tour package "${
+                    updatedPackage.title
+                  }" has been rejected. ${
+                    rejection_reason
+                      ? `Reason: ${rejection_reason}`
+                      : "Please review and resubmit."
+                  }`,
+            relatedId: parseInt(id),
+          };
+
+          console.log("Creating notification with data:", notificationData);
+          const createdNotification =
+            await notificationService.createNotification(notificationData);
+          console.log(
+            "Notification created successfully:",
+            createdNotification
+          );
+          console.log(
+            `Notification created for guide ${guideId} for tour ${updatedPackage.title}`
+          );
+        } else {
+          console.log("No guide ID found - skipping notification");
+        }
+        console.log("=================================");
+      } catch (notificationError) {
+        console.error("Error creating notification:", notificationError);
+        // Don't fail the main operation if notification fails
+      }
+
       res.status(200).json({
         success: true,
         message: "Tour package status updated successfully",
@@ -256,7 +308,6 @@ class TourPackageController {
 
   async getTourPackagesByGuideId(req, res) {
     try {
-
       const { guideId } = req.params;
       const { status, search, page = 1, limit = 10 } = req.query;
 
