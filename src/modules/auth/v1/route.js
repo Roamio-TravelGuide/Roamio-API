@@ -4,7 +4,7 @@ import { authValidations } from "./validate.js";
 import { validateRequest } from "../../../middleware/validation.js";
 import multer from "multer";
 import path from "path";
-
+import fs from "fs";
 
 const router = Router();
 
@@ -13,15 +13,18 @@ router.post(
   validateRequest(authValidations.login),
   AuthController.login
 );
-router.get(
-  '/logout', 
-  AuthController.logout
-);
-
+router.get("/logout", AuthController.logout);
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "public/uploads/guideDocuments"); // Save here
+    const uploadDir = "public/uploads/guideDocuments";
+
+    // Ensure the directory exists
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -47,32 +50,32 @@ const upload = multer({ storage, fileFilter });
 
 router.post(
   "/signup",
-  upload.single("verificationDocument"),  // expects field name "verificationDocument"
+  upload.single("verificationDocument"), // expects field name "verificationDocument"
   validateRequest(authValidations.signup),
   AuthController.signup
 );
 
 // Password reset routes
 router.post(
-  '/forgot-password',
+  "/forgot-password",
   validateRequest(authValidations.forgotPassword),
   AuthController.forgotPassword
 );
 
 router.post(
-  '/verify-otp',
+  "/verify-otp",
   validateRequest(authValidations.resetPassword.slice(0, 2)), // email and OTP only
   AuthController.verifyOTP
 );
 
 router.post(
-  '/reset-password',
+  "/reset-password",
   validateRequest(authValidations.resetPassword),
   AuthController.resetPasswordWithOTP
 );
 // Add this to your routes for debugging (remove in production)
 // Add this debug route
-router.post('/debug-otp-status', async (req, res) => {
+router.post("/debug-otp-status", async (req, res) => {
   try {
     const { email, otp } = req.body;
     const result = await new AuthService().debugOTPStatus(email, otp);
@@ -82,7 +85,7 @@ router.post('/debug-otp-status', async (req, res) => {
   }
 });
 router.post(
-  '/reset-password-otp',
+  "/reset-password-otp",
   validateRequest(authValidations.resetPassword),
   AuthController.resetPasswordWithOTP
 );
