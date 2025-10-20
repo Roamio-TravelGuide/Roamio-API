@@ -1,5 +1,5 @@
 import { PaymentService } from "./service.js";
-import Stripe from 'stripe';
+import Stripe from "stripe";
 
 export class PaymentController {
   constructor() {
@@ -35,15 +35,50 @@ export class PaymentController {
     }
   }
 
-  async getSoldPackagesCount(req,res){
+  async getRevenueById(req, res) {
+    try {
+      const { id } = req.params;
+      const revenueById = await this.paymentService.getRevenueById(
+        parseInt(id)
+      );
+      res.status(200).json({
+        data: revenueById,
+        message: "Total revenue by id fetched successfully",
+      });
+    } catch (error) {
+      console.error("Error in fetching revenue by id:", error);
+      res.status(500).json({
+        error: error.message || "Failed to fetch revenue by id",
+      });
+    }
+  }
+
+  async getPaidPackagesById(req, res) {
+    try {
+      const { id } = req.params;
+      const paidPackages = await this.paymentService.getPaidPackagesById(
+        parseInt(id)
+      );
+      console.log(`Paid packages result for guide ${id}:`, paidPackages?.length ?? 0);
+      res.status(200).json({
+        data: paidPackages,
+        message: "Paid packages by id fetched successfully",
+      });
+    } catch (error) {
+      console.error("Error in fetching paid packages by id:", error);
+      res.status(500).json({
+        error: error.message || "Failed to fetch paid packages by id",
+      });
+    }
+  }
+
+  async getSoldPackagesCount(req, res) {
     try {
       const soldPackageCount = await this.paymentService.getSoldPackagesCount();
-      res.status(200).json(
-        {
-          data:soldPackageCount,
-          message: "Sold packages count fetched successfully"
-        }
-      );
+      res.status(200).json({
+        data: soldPackageCount,
+        message: "Sold packages count fetched successfully",
+      });
     } catch (error) {
       console.error("Sold packages count calculation error:", error);
       res.status(500).json({
@@ -51,15 +86,14 @@ export class PaymentController {
       });
     }
   }
-  async getTopPerformerRevenue(req, res){
+  async getTopPerformerRevenue(req, res) {
     try {
-      const topPerformerRevenue = await this.paymentService.getTopPerformerRevenue();
-      res.status(200).json(
-        {
-          data: topPerformerRevenue,
-          message: "Top performer revenue fetched successfully"
-        }
-      );
+      const topPerformerRevenue =
+        await this.paymentService.getTopPerformerRevenue();
+      res.status(200).json({
+        data: topPerformerRevenue,
+        message: "Top performer revenue fetched successfully",
+      });
     } catch (error) {
       console.error("Top performer revenue calculation error:", error);
       res.status(500).json({
@@ -68,15 +102,14 @@ export class PaymentController {
     }
   }
 
-  async getTopSellingPackage(req, res){
+  async getTopSellingPackage(req, res) {
     try {
-      const topSellingPackage = await this.paymentService.getTopSellingPackage();
-      res.status(200).json(
-        {
-          data: topSellingPackage,
-          message: "Top selling package fetched successfully"
-        }
-      );
+      const topSellingPackage =
+        await this.paymentService.getTopSellingPackage();
+      res.status(200).json({
+        data: topSellingPackage,
+        message: "Top selling package fetched successfully",
+      });
     } catch (error) {
       console.error("Top performer revenue calculation error:", error);
       res.status(500).json({
@@ -86,24 +119,24 @@ export class PaymentController {
   }
   async createPaymentIntent(req, res) {
     try {
-      const { amount, currency = 'usd', metadata = {} } = req.body;
+      const { amount, currency = "usd", metadata = {} } = req.body;
 
       // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await this.stripe.paymentIntents.create({
         amount: Math.round(amount * 100), // Convert to cents
         currency,
-        payment_method_types: ['card'], // Explicitly specify card payments only
-        confirmation_method: 'manual', // Manual confirmation to avoid redirect issues
-        capture_method: 'automatic', // Automatically capture when confirmed
+        payment_method_types: ["card"], // Explicitly specify card payments only
+        confirmation_method: "manual", // Manual confirmation to avoid redirect issues
+        capture_method: "automatic", // Automatically capture when confirmed
         metadata: {
           userId: req.user?.id,
-          ...metadata
-        }
+          ...metadata,
+        },
       });
 
       res.status(201).json({
         clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id
+        paymentIntentId: paymentIntent.id,
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -114,32 +147,37 @@ export class PaymentController {
       const data = req.body;
       const userId = req.user?.id;
 
-      console.log('createStripPayment called with:', { data, userId });
+      console.log("createStripPayment called with:", { data, userId });
 
       if (!userId) {
-        console.log('No user ID found, checking if this is a vendor payment...');
+        console.log(
+          "No user ID found, checking if this is a vendor payment..."
+        );
         // For vendor payments, we might not have req.user, try to get from data
         const vendorUserId = data.metadata?.userId;
         if (vendorUserId) {
-          console.log('Using vendor user ID:', vendorUserId);
+          console.log("Using vendor user ID:", vendorUserId);
           // For now, let's allow this without authentication for testing
           // In production, you'd want proper auth
         } else {
-          return res.status(401).json({ error: 'Unauthorized - no user ID' });
+          return res.status(401).json({ error: "Unauthorized - no user ID" });
         }
       }
 
-      console.log('Calling payment service with data:', data);
-      const stripPaymentData = await this.paymentService.createStripPayment(data, userId || data.metadata?.userId);
+      console.log("Calling payment service with data:", data);
+      const stripPaymentData = await this.paymentService.createStripPayment(
+        data,
+        userId || data.metadata?.userId
+      );
 
-      console.log('Payment created successfully:', stripPaymentData);
+      console.log("Payment created successfully:", stripPaymentData);
 
       res.status(201).json({
         data: stripPaymentData,
-        message: 'Payment recorded successfully'
+        message: "Payment recorded successfully",
       });
     } catch (error) {
-      console.error('Error in createStripPayment:', error);
+      console.error("Error in createStripPayment:", error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -149,14 +187,16 @@ export class PaymentController {
       const { paymentIntentId, userId, amount, currency, packageId } = req.body;
 
       // Get the payment intent from Stripe to verify it
-      const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(
+        paymentIntentId
+      );
 
       // Only proceed if payment is actually succeeded
-      if (paymentIntent.status !== 'succeeded') {
+      if (paymentIntent.status !== "succeeded") {
         return res.status(400).json({
           success: false,
-          error: 'Payment not completed',
-          status: paymentIntent.status
+          error: "Payment not completed",
+          status: paymentIntent.status,
         });
       }
 
@@ -165,7 +205,7 @@ export class PaymentController {
         transaction_id: paymentIntent.id,
         user_id: parseInt(userId),
         amount: amount,
-        status: 'succeeded',
+        status: "succeeded",
         currency: currency,
         payment_method: paymentIntent.payment_method_types[0],
         paid_at: new Date(),
@@ -173,28 +213,29 @@ export class PaymentController {
         package_id: packageId ? parseInt(packageId) : null,
       };
 
-      const payment = await this.paymentService.paymentRepository.createStripPayment({
-        transaction_id: paymentData.transaction_id,
-        user: { connect: { id: paymentData.user_id } },
-        amount: paymentData.amount,
-        status: 'completed',
-        currency: paymentData.currency,
-        paid_at: paymentData.paid_at,
-        invoice_number: paymentData.invoice_number,
-        package_id: paymentData.package_id,
-      });
+      const payment =
+        await this.paymentService.paymentRepository.createStripPayment({
+          transaction_id: paymentData.transaction_id,
+          user: { connect: { id: paymentData.user_id } },
+          amount: paymentData.amount,
+          status: "completed",
+          currency: paymentData.currency,
+          paid_at: paymentData.paid_at,
+          invoice_number: paymentData.invoice_number,
+          package_id: paymentData.package_id,
+        });
 
       res.status(201).json({
         success: true,
         payment: payment,
-        message: 'Payment recorded successfully',
-        status: paymentIntent.status
+        message: "Payment recorded successfully",
+        status: paymentIntent.status,
       });
     } catch (error) {
-      console.error('Error recording payment:', error);
+      console.error("Error recording payment:", error);
       res.status(500).json({
         success: false,
-        error: error.message
+        error: error.message,
       });
     }
   }
@@ -205,34 +246,34 @@ export class PaymentController {
       const userId = req.user?.id;
 
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized - no user ID' });
+        return res.status(401).json({ error: "Unauthorized - no user ID" });
       }
 
-      console.log('Confirming payment intent:', paymentIntentId);
-      console.log('Payment method data:', paymentMethodData);
+      console.log("Confirming payment intent:", paymentIntentId);
+      console.log("Payment method data:", paymentMethodData);
 
       // Use test payment method tokens for security (as Stripe recommends)
       let paymentMethodId;
-      
+
       // Map test card numbers to Stripe test payment method tokens
-      const testCardNumber = paymentMethodData.cardNumber.replace(/\s/g, '');
-      
-      if (testCardNumber === '4242424242424242') {
+      const testCardNumber = paymentMethodData.cardNumber.replace(/\s/g, "");
+
+      if (testCardNumber === "4242424242424242") {
         // Visa test card - use test payment method
-        paymentMethodId = 'pm_card_visa'; // Stripe test payment method
-      } else if (testCardNumber === '5555555555554444') {
+        paymentMethodId = "pm_card_visa"; // Stripe test payment method
+      } else if (testCardNumber === "5555555555554444") {
         // Mastercard test card
-        paymentMethodId = 'pm_card_mastercard';
-      } else if (testCardNumber === '378282246310005') {
+        paymentMethodId = "pm_card_mastercard";
+      } else if (testCardNumber === "378282246310005") {
         // American Express test card
-        paymentMethodId = 'pm_card_amex';
+        paymentMethodId = "pm_card_amex";
       } else {
         // For any other card, create a test payment method using Stripe's test token
         try {
           // Create a test token first (this is allowed by Stripe)
           const token = await this.stripe.tokens.create({
             card: {
-              number: '4242424242424242', // Always use safe test number
+              number: "4242424242424242", // Always use safe test number
               exp_month: parseInt(paymentMethodData.expMonth),
               exp_year: parseInt(paymentMethodData.expYear),
               cvc: paymentMethodData.cvc,
@@ -241,7 +282,7 @@ export class PaymentController {
 
           // Create payment method from token
           const paymentMethod = await this.stripe.paymentMethods.create({
-            type: 'card',
+            type: "card",
             card: {
               token: token.id,
             },
@@ -252,36 +293,47 @@ export class PaymentController {
 
           paymentMethodId = paymentMethod.id;
         } catch (tokenError) {
-          console.error('Error creating payment method from token:', tokenError);
+          console.error(
+            "Error creating payment method from token:",
+            tokenError
+          );
           // Fallback to test payment method
-          paymentMethodId = 'pm_card_visa';
+          paymentMethodId = "pm_card_visa";
         }
       }
 
-      console.log('Using payment method:', paymentMethodId);
+      console.log("Using payment method:", paymentMethodId);
 
       // Confirm the payment intent with the payment method
-      const confirmedPaymentIntent = await this.stripe.paymentIntents.confirm(paymentIntentId, {
-        payment_method: paymentMethodId,
-      });
+      const confirmedPaymentIntent = await this.stripe.paymentIntents.confirm(
+        paymentIntentId,
+        {
+          payment_method: paymentMethodId,
+        }
+      );
 
-      console.log('Payment intent confirmed:', confirmedPaymentIntent.status);
+      console.log("Payment intent confirmed:", confirmedPaymentIntent.status);
 
       // Record payment in database if successful
-      if (confirmedPaymentIntent.status === 'succeeded') {
+      if (confirmedPaymentIntent.status === "succeeded") {
         const paymentData = {
           transaction_id: confirmedPaymentIntent.id,
           user_id: parseInt(userId),
           amount: confirmedPaymentIntent.amount / 100, // Convert from cents
-          status: 'completed',
+          status: "completed",
           currency: confirmedPaymentIntent.currency,
           paid_at: new Date(),
           invoice_number: confirmedPaymentIntent.id,
-          package_id: confirmedPaymentIntent.metadata?.packageId ? parseInt(confirmedPaymentIntent.metadata.packageId) : null,
+          package_id: confirmedPaymentIntent.metadata?.packageId
+            ? parseInt(confirmedPaymentIntent.metadata.packageId)
+            : null,
         };
 
-        const payment = await this.paymentService.paymentRepository.createStripPayment(paymentData);
-        
+        const payment =
+          await this.paymentService.paymentRepository.createStripPayment(
+            paymentData
+          );
+
         res.status(200).json({
           success: true,
           payment: payment,
@@ -291,25 +343,24 @@ export class PaymentController {
             amount: confirmedPaymentIntent.amount,
             currency: confirmedPaymentIntent.currency,
           },
-          message: 'Payment confirmed and recorded successfully'
+          message: "Payment confirmed and recorded successfully",
         });
       } else {
         res.status(400).json({
           success: false,
-          error: 'Payment confirmation failed',
-          status: confirmedPaymentIntent.status
+          error: "Payment confirmation failed",
+          status: confirmedPaymentIntent.status,
         });
       }
-
     } catch (error) {
-      console.error('Error confirming payment intent:', error);
+      console.error("Error confirming payment intent:", error);
       res.status(500).json({
         success: false,
-        error: error.message
+        error: error.message,
       });
     }
   }
-  
+
   /*
   async handleWebhook(req, res) {
     const sig = req.headers['stripe-signature'];
@@ -344,10 +395,3 @@ export class PaymentController {
   }
     */
 }
-  
-  
-
-  
-  
-
-
