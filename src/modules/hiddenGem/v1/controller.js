@@ -242,6 +242,190 @@ class HiddenGemController {
       });
     }
   }
+
+  async getAllHiddenGems(req, res) {
+        try {
+            const {
+                status = 'all',
+                page = 1,
+                limit = 10,
+            } = req.query;
+
+            const filters = {
+                status,
+                page: parseInt(page),
+                limit: parseInt(limit),
+            };
+
+            const result = await hiddenGemService.getAllHiddenGems(filters);
+            
+            res.status(200).json({
+                success: true,
+                data: result.hiddenPlaces,
+                pagination: {
+                    totalCount: result.totalCount,
+                    totalPages: result.totalPages,
+                    currentPage: result.currentPage,
+                    hasNextPage: result.hasNextPage,
+                    hasPrevPage: result.hasPrevPage
+                }
+            });
+        } catch (error) {
+            console.error('getAllHiddenGems controller error:', error.message);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch hidden gems',
+                error: error.message
+            });
+        }
+    }
+
+    // Get hidden gem by ID
+    async getHiddenGemById(req, res) {
+        try {
+            const { id } = req.params;
+            
+            const hiddenGem = await hiddenGemService.getHiddenGemById(id);
+            
+            res.status(200).json({
+                success: true,
+                data: hiddenGem
+            });
+        } catch (error) {
+            console.error('getHiddenGemById controller error:', error.message);
+            
+            const statusCode = error.message.includes('not found') ? 404 : 500;
+            
+            res.status(statusCode).json({
+                success: false,
+                message: 'Failed to fetch hidden gem',
+                error: error.message
+            });
+        }
+    }
+
+    async getHiddenGemsByTravelerId(req, res) {
+        try {
+            const { travelerId } = req.params; // This is actually user ID from the route
+            const {
+                status = 'all',
+                page = 1,
+                limit = 10,
+            } = req.query;
+
+            console.log('Getting hidden gems for user ID:', travelerId);
+
+            const filters = {
+                status,
+                page: parseInt(page),
+                limit: parseInt(limit),
+            };
+
+            const result = await hiddenGemService.getHiddenGemsByUserId(parseInt(travelerId), filters);
+            
+            res.status(200).json({
+                success: true,
+                data: result.hiddenPlaces,
+                pagination: {
+                    totalCount: result.totalCount,
+                    totalPages: result.totalPages,
+                    currentPage: result.currentPage,
+                    hasNextPage: result.hasNextPage,
+                    hasPrevPage: result.hasPrevPage
+                }
+            });
+        } catch (error) {
+            console.error('getHiddenGemsByTravelerId controller error:', error.message);
+            
+            const statusCode = error.message.includes('Traveler profile not found') ? 404 : 500;
+            
+            res.status(statusCode).json({
+                success: false,
+                message: 'Failed to fetch hidden gems',
+                error: error.message
+            });
+        }
+    }
+
+    async getMyHiddenGemsStats(req, res) {
+        try {
+            const { travelerId } = req.params; // This is actually user ID from the route
+            
+            console.log('Getting stats for user ID:', travelerId);
+
+            const stats = await hiddenGemService.getMyHiddenGemsStats(parseInt(travelerId));
+            
+            res.status(200).json({
+                success: true,
+                data: stats
+            });
+        } catch (error) {
+            console.error('getMyHiddenGemsStats controller error:', error.message);
+            
+            const statusCode = error.message.includes('Traveler profile not found') ? 404 : 500;
+            
+            res.status(statusCode).json({
+                success: false,
+                message: 'Failed to fetch hidden gems statistics',
+                error: error.message
+            });
+        }
+    }
+
+    async getHiddenGemById(req, res) {
+        try {
+            const { id } = req.params;
+            
+            const hiddenGem = await hiddenGemService.getHiddenGemById(id);
+            
+            res.status(200).json({
+                success: true,
+                data: hiddenGem
+            });
+        } catch (error) {
+            console.error('getHiddenGemById controller error:', error.message);
+            
+            const statusCode = error.message.includes('not found') ? 404 : 500;
+            
+            res.status(statusCode).json({
+                success: false,
+                message: 'Failed to fetch hidden gem',
+                error: error.message
+            });
+        }
+    }
+
+    async deleteHiddenGem(req, res) {
+        try {
+            const { id } = req.params;
+
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Hidden gem ID is required'
+                });
+            }
+
+            const result = await hiddenGemService.deleteHiddenGem(id);
+
+            res.status(200).json({
+                success: true,
+                message: 'Hidden gem deleted successfully',
+                data: result
+            });
+        } catch (error) {
+            console.error('deleteHiddenGem controller error:', error.message);
+            
+            const statusCode = error.message.includes('Only rejected') ? 400 : 
+                             error.message.includes('not found') ? 404 : 500;
+            
+            res.status(statusCode).json({
+                success: false,
+                message: 'Failed to delete hidden gem',
+                error: error.message
+            });
+        }
+    }
 }
 
 // Export the class instance

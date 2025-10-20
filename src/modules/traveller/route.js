@@ -19,4 +19,6 @@ router.get("/reviews", authenticate, (req, res) => travellerController.getMyRevi
 router.get("/packages/:packageId/reviews", (req, res) => travellerController.getReviewsByPackage(req, res));
 router.get("/packages/:packageId/rating-stats", (req, res) => travellerController.getPackageRatingStats(req, res));
 
+router.get("/nearby-places", (req, res) => travellerController.getNearbyPlaces(req, res)); // New endpoint
+
 export default router;

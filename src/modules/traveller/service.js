@@ -81,4 +81,8 @@ export class TravellerService {
   async getPackageRatingStats(packageId) {
     return await this.travellerRepository.getPackageRatingStats(packageId);
   }
+
+  async findNearbyPlaces(latitude, longitude, radius = 10) {
+    return await this.travellerRepository.findNearbyPlaces(latitude, longitude, radius);
+  }
 }

@@ -426,6 +426,235 @@ class HiddenGemRepository {
       throw error;
     }
   }
+
+  async getTravelerIdByUserId(userId) {
+        try {
+            const traveler = await prisma.traveler.findUnique({
+                where: {
+                    user_id: parseInt(userId)
+                },
+                select: {
+                    id: true
+                }
+            });
+
+            if (!traveler) {
+                throw new Error('Traveler profile not found for user');
+            }
+
+            return traveler.id;
+        } catch (error) {
+            console.error('getTravelerIdByUserId repository error:', error.message);
+            throw error;
+        }
+    }
+
+    // Get hidden gems by traveler ID with filters
+    async findByTravelerId(travelerId, filters = {}) {
+        try {
+            const {
+                status = 'all',
+                page = 1,
+                limit = 10,
+            } = filters;
+
+            const skip = (page - 1) * limit;
+
+            // Build where clause
+            const where = {
+                traveler_id: parseInt(travelerId)
+            };
+
+            if (status !== 'all') {
+                where.status = status;
+            }
+
+            const hiddenPlaces = await prisma.hiddenPlace.findMany({
+                where,
+                include: {
+                    traveler: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    profile_picture_url: true,
+                                },
+                            },
+                        },
+                    },
+                    location: {
+                        select: {
+                            id: true,
+                            latitude: true,
+                            longitude: true,
+                            address: true,
+                            city: true,
+                            province: true,
+                            district: true,
+                            postal_code: true,
+                        },
+                    },
+                    picture: {
+                        select: {
+                            id: true,
+                            url: true,
+                            media_type: true,
+                            width: true,
+                            height: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    created_at: 'desc',
+                },
+                skip,
+                take: limit,
+            });
+
+            const totalCount = await prisma.hiddenPlace.count({ where });
+
+            return {
+                hiddenPlaces,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                currentPage: page,
+                hasNextPage: page < Math.ceil(totalCount / limit),
+                hasPrevPage: page > 1
+            };
+        } catch (error) {
+            console.error('findByTravelerId repository error:', error.message);
+            throw error;
+        }
+    }
+
+    // Get hidden gem by ID
+    async findById(hiddenGemId) {
+        try {
+            const hiddenGem = await prisma.hiddenPlace.findUnique({
+                where: {
+                    id: parseInt(hiddenGemId),
+                },
+                include: {
+                    traveler: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    profile_picture_url: true,
+                                },
+                            },
+                        },
+                    },
+                    location: {
+                        select: {
+                            id: true,
+                            latitude: true,
+                            longitude: true,
+                            address: true,
+                            city: true,
+                            province: true,
+                            district: true,
+                            postal_code: true,
+                        },
+                    },
+                    picture: {
+                        select: {
+                            id: true,
+                            url: true,
+                            media_type: true,
+                            file_size: true,
+                            format: true,
+                            width: true,
+                            height: true,
+                        },
+                    },
+                },
+            });
+
+            return hiddenGem;
+        } catch (error) {
+            console.error('findById repository error:', error.message);
+            throw error;
+        }
+    }
+
+    // Delete hidden gem
+    async delete(hiddenGemId) {
+        try {
+            // First check if the hidden gem exists and get its picture_id
+            const hiddenGem = await prisma.hiddenPlace.findUnique({
+                where: { id: parseInt(hiddenGemId) },
+                select: { picture_id: true, location_id: true }
+            });
+
+            if (!hiddenGem) {
+                throw new Error('Hidden gem not found');
+            }
+
+            // Delete the hidden place
+            await prisma.hiddenPlace.delete({
+                where: { id: parseInt(hiddenGemId) }
+            });
+
+            // Delete associated media if exists
+            if (hiddenGem.picture_id) {
+                await prisma.media.delete({
+                    where: { id: hiddenGem.picture_id }
+                });
+            }
+
+            // Delete associated location
+            if (hiddenGem.location_id) {
+                await prisma.location.delete({
+                    where: { id: hiddenGem.location_id }
+                });
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('delete repository error:', error.message);
+            throw error;
+        }
+    }
+
+    // Get moderation statistics for a specific traveler
+    async getMyHiddenGemsStats(travelerId) {
+        try {
+            const stats = await prisma.hiddenPlace.groupBy({
+                by: ['status'],
+                _count: {
+                    id: true
+                },
+                where: {
+                    traveler_id: parseInt(travelerId)
+                }
+            });
+
+            const statsObject = {
+                pending: 0,
+                approved: 0,
+                rejected: 0,
+                draft: 0,
+                total: 0
+            };
+
+            stats.forEach(stat => {
+                statsObject[stat.status] = stat._count.id;
+                statsObject.total += stat._count.id;
+            });
+
+            return statsObject;
+        } catch (error) {
+            console.error('getMyHiddenGemsStats repository error:', error.message);
+            throw error;
+        }
+    }
+
+
 }
 
 const hiddenGemRepository = new HiddenGemRepository();
