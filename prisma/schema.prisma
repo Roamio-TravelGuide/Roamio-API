@@ -33,6 +33,7 @@ model User {
   guides              TravelGuide?
   travelers           Traveler?
   vendor_profile      Vendor?         @relation("vendor_profile")
+  notifications       Notification[]  @relation("user_notifications")
 
   @@map("user")
 }
@@ -416,4 +417,26 @@ enum POIStatus {
   approved
   rejected
   archived
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  relatedId Int? // Could be tour package ID, etc.
+  user      User             @relation("user_notifications", fields: [userId], references: [id])
+
+  @@map("notification")
+}
+
+enum NotificationType {
+  tour_approved
+  tour_rejected
+  tour_pending
+  general
 }

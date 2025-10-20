@@ -10,6 +10,7 @@ import storageRoutes from "./modules/storage/v1/route.js";
 import hiddenGemRoutes from "./modules/hiddenGem/v1/route.js";
 import travellerRoutes from "./modules/traveller/route.js";
 import packageRoutes from "./modules/packages/route.js";
+import notificationRoutes from "./modules/notification/v1/route.js";
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use("/support", supportRoutes);
 router.use("/poi", poiRoutes);
 router.use("/hiddenGem", hiddenGemRoutes);
 router.use("/traveller", travellerRoutes);
+router.use("/notifications", notificationRoutes);
 
 // Add route for getting individual package by ID (must be before /packages route to avoid conflicts)
 // router.get('/packages/:id', async (req, res) => {
@@ -67,7 +69,6 @@ router.use("/traveller", travellerRoutes);
 // });
 
 router.use("/packages", packageRoutes);
-
 
 router.get("/health", (req, res) => {
   res.status(200).json({ status: "OK" });

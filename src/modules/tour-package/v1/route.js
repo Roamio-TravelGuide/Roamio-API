@@ -12,7 +12,11 @@ const upload = multer({
   },
 });
 
-router.post("/complete", upload.any(), tourPackageController.createCompleteTourPackage);
+router.post(
+  "/complete",
+  upload.any(),
+  tourPackageController.createCompleteTourPackage
+);
 
 router.get("/", tourPackageController.getTourPackages);
 
@@ -30,7 +34,6 @@ router.delete("/:id", tourPackageController.deleteTourPackage);
 
 router.post("/:id/submit", tourPackageController.submitForApproval);
 
-router.put('/:id', upload.any(), tourPackageController.updateTour);
-
+router.put("/:id", upload.any(), tourPackageController.updateTour);
 
 export default router;
