@@ -431,4 +431,124 @@ export class TravellerRepository {
       ratingDistribution: stats
     };
   }
+
+  async findNearbyPlaces(latitude, longitude, radius = 5) {
+    try {
+      console.log('Finding nearby places within', radius, 'km radius:', { latitude, longitude });
+      
+      // Calculate bounding box for efficient querying
+      const boundingBox = this.calculateBoundingBox(latitude, longitude, radius);
+      
+      // Get all locations within the bounding box
+      const locations = await this.prisma.location.findMany({
+        where: {
+          latitude: {
+            gte: boundingBox.minLat,
+            lte: boundingBox.maxLat
+          },
+          longitude: {
+            gte: boundingBox.minLng,
+            lte: boundingBox.maxLng
+          }
+        },
+        include: {
+          pois: {
+            where: { status: 'approved' }
+          },
+          hidden_places: {
+            where: { status: 'approved' }
+          }
+        }
+      });
+
+      // Calculate exact distances and filter by radius
+      const nearbyPlaces = [];
+
+      for (const location of locations) {
+        const distance = this.calculateDistance(
+          latitude, longitude,
+          location.latitude, location.longitude
+        );
+
+        // Only include places within the specified radius
+        if (distance <= radius) {
+          // Add POIs from this location
+          for (const poi of location.pois) {
+            nearbyPlaces.push({
+              id: poi.id,
+              name: poi.name,
+              category: poi.category,
+              description: poi.description,
+              type: 'poi',
+              place_type: poi.category, // Use actual POI category instead of hardcoded 'restaurant'
+              business_type: poi.type, // Include the type field
+              latitude: location.latitude,
+              longitude: location.longitude,
+              address: location.address,
+              city: location.city,
+              district: location.district,
+              province: location.province,
+              distance_km: Math.round(distance * 100) / 100
+            });
+          }
+
+          // Add hidden gems from this location
+          for (const hiddenPlace of location.hidden_places) {
+            nearbyPlaces.push({
+              id: hiddenPlace.id,
+              name: hiddenPlace.title,
+              category: 'hidden_gem',
+              description: hiddenPlace.description,
+              type: 'hidden_gem',
+              place_type: 'hidden_gem',
+              latitude: location.latitude,
+              longitude: location.longitude,
+              address: location.address,
+              city: location.city,
+              district: location.district,
+              province: location.province,
+              distance_km: Math.round(distance * 100) / 100
+            });
+          }
+        }
+      }
+
+      // Sort by distance (closest first) and return
+      nearbyPlaces.sort((a, b) => a.distance_km - b.distance_km);
+      console.log(`Found ${nearbyPlaces.length} places within ${radius}km radius`);
+      
+      return nearbyPlaces;
+
+    } catch (error) {
+      console.error("Error finding nearby places:", error);
+      throw new Error("Failed to find nearby places");
+    }
+  }
+  
+  // Calculate bounding box for efficient database querying
+  calculateBoundingBox(lat, lng, radiusKm) {
+    const earthRadiusKm = 6371;
+    const latDelta = (radiusKm / earthRadiusKm) * (180 / Math.PI);
+    const lngDelta = (radiusKm / (earthRadiusKm * Math.cos(lat * Math.PI / 180))) * (180 / Math.PI);
+    
+    return {
+      minLat: lat - latDelta,
+      maxLat: lat + latDelta,
+      minLng: lng - lngDelta,
+      maxLng: lng + lngDelta
+    };
+  }
+
+  // Haversine formula for accurate distance calculation
+  calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
 }

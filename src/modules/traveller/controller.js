@@ -338,4 +338,37 @@ export class TravellerController {
       });
     }
   }
+
+  // nearbyPlacesController.js - Updated to use radius parameter
+  async getNearbyPlaces(req, res){
+  try {
+    const { latitude, longitude, radius = 5 } = req.query;
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: 'Latitude and longitude are required'
+      });
+    }
+
+    const places = await this.travellerService.findNearbyPlaces(
+      parseFloat(latitude),
+      parseFloat(longitude),
+      parseFloat(radius)
+    );
+
+    res.json({
+      success: true,
+      data: places,
+      count: places.length
+    });
+
+  } catch (error) {
+    console.error('Error in getNearbyPlaces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
 }

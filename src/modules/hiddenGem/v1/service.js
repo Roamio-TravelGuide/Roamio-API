@@ -334,6 +334,96 @@ class HiddenGemService {
       throw error;
     }
   }
+
+
+  async getTravelerIdByUserId(userId) {
+        try {
+            const travelerId = await this.hiddenGemRepository.getTravelerIdByUserId(userId);
+            return travelerId;
+        } catch (error) {
+            console.error('getTravelerIdByUserId service error:', error.message);
+            throw error;
+        }
+    }
+
+  async getHiddenGemsByUserId(userId, filters = {}) {
+        try {
+            // Convert user ID to traveler ID
+            const travelerId = await this.getTravelerIdByUserId(userId);
+            
+            const {
+                status = 'all',
+                page = 1,
+                limit = 10,
+            } = filters;
+
+            const result = await this.hiddenGemRepository.findByTravelerId(travelerId, {
+                status,
+                page: parseInt(page),
+                limit: parseInt(limit),
+            });
+
+            return result;
+        } catch (error) {
+            console.error('getHiddenGemsByUserId service error:', error.message);
+            throw error;
+        }
+    }
+
+    // Get hidden gem by ID
+    async getHiddenGemById(hiddenGemId) {
+        try {
+            const hiddenGem = await this.hiddenGemRepository.findById(hiddenGemId);
+            
+            if (!hiddenGem) {
+                throw new Error('Hidden gem not found');
+            }
+
+            return hiddenGem;
+        } catch (error) {
+            console.error('getHiddenGemById service error:', error.message);
+            throw error;
+        }
+    }
+
+    // Delete hidden gem (only if rejected)
+    async deleteHiddenGem(hiddenGemId) {
+        try {
+            // // Check if the hidden gem is rejected
+            // const isRejected = await this.hiddenGemRepository.isRejected(hiddenGemId);
+            
+            // if (!isRejected) {
+            //     throw new Error('Only rejected hidden gems can be deleted');
+            // }
+
+            // // Delete the hidden gem
+            const result = await this.hiddenGemRepository.delete(hiddenGemId);
+
+            // Delete associated files
+            await LocalFileStorage.deleteHiddenGemFiles(hiddenGemId);
+
+            return result;
+        } catch (error) {
+            console.error('deleteHiddenGem service error:', error.message);
+            throw error;
+        }
+    }
+
+    // Get current user's hidden gems statistics
+    async getMyHiddenGemsStats(userId) {
+        try {
+            // Convert user ID to traveler ID
+            const travelerId = await this.getTravelerIdByUserId(userId);
+            
+            const stats = await this.hiddenGemRepository.getMyHiddenGemsStats(travelerId);
+            return stats;
+        } catch (error) {
+            console.error('getMyHiddenGemsStats service error:', error.message);
+            throw error;
+        }
+    }
+
+
 }
 
 export default new HiddenGemService();

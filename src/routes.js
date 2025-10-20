@@ -32,39 +32,39 @@ router.use("/hiddenGem", hiddenGemRoutes);
 router.use("/traveller", travellerRoutes);
 
 // Add route for getting individual package by ID (must be before /packages route to avoid conflicts)
-router.get('/packages/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
+// router.get('/packages/:id', async (req, res) => {
+//   try {
+//     const { id } = req.params;
 
-    if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid package ID",
-      });
-    }
+//     if (!id || isNaN(parseInt(id))) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid package ID",
+//       });
+//     }
 
-    const tourPackageService = (await import('./modules/tour-package/v1/service.js')).default;
-    const tourPackage = await tourPackageService.getTourPackageById(parseInt(id));
+//     const tourPackageService = (await import('./modules/tour-package/v1/service.js')).default;
+//     const tourPackage = await tourPackageService.getTourPackageById(parseInt(id));
 
-    if (!tourPackage) {
-      return res.status(404).json({
-        success: false,
-        message: "Package not found",
-      });
-    }
+//     if (!tourPackage) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Package not found",
+//       });
+//     }
 
-    return res.status(200).json({
-      success: true,
-      data: tourPackage,
-    });
-  } catch (error) {
-    console.error("Error fetching package:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-});
+//     return res.status(200).json({
+//       success: true,
+//       data: tourPackage,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching package:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//     });
+//   }
+// });
 
 router.use("/packages", packageRoutes);
 

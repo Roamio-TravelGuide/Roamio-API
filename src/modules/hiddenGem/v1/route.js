@@ -21,4 +21,11 @@ router.get('/moderation', authenticate, hiddenGemController.getHiddenGemsForMode
 router.patch('/:id/status', authenticate, hiddenGemController.updateHiddenGemStatus);
 router.get('/moderation/stats', authenticate, hiddenGemController.getModerationStats);
 
+router.get('/traveler/:travelerId', hiddenGemController.getHiddenGemsByTravelerId);
+router.get('/:id', hiddenGemController.getHiddenGemById);
+router.get('/traveler/:travelerId/stats', hiddenGemController.getMyHiddenGemsStats);
+router.delete('/:id', hiddenGemController.deleteHiddenGem);
+
+
+
 export default router;
