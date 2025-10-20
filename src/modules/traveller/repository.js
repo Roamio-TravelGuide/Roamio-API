@@ -439,7 +439,7 @@ export class TravellerRepository {
       // Calculate bounding box for efficient querying
       const boundingBox = this.calculateBoundingBox(latitude, longitude, radius);
       
-      // Get all locations within the bounding box
+      // Get all locations within the bounding box with proper image includes
       const locations = await this.prisma.location.findMany({
         where: {
           latitude: {
@@ -453,14 +453,37 @@ export class TravellerRepository {
         },
         include: {
           pois: {
-            where: { status: 'approved' }
+            where: { status: 'approved' },
+            include: {
+              vendor: {
+                include: {
+                  vendor_profile: {
+                    select: {
+                      cover_url: true,
+                      logo_url: true
+                    }
+                  }
+                }
+              }
+            }
           },
           hidden_places: {
-            where: { status: 'approved' }
+            where: { status: 'approved' },
+            include: {
+              picture: {
+                select: {
+                  id: true,
+                  url: true,
+                  media_type: true
+                }
+              }
+            }
           }
         }
       });
 
+      console.log('Found locations:', locations.length);
+      
       // Calculate exact distances and filter by radius
       const nearbyPlaces = [];
 
@@ -470,18 +493,22 @@ export class TravellerRepository {
           location.latitude, location.longitude
         );
 
+        console.log(`Location ${location.id} distance: ${distance}km`);
+        
         // Only include places within the specified radius
         if (distance <= radius) {
           // Add POIs from this location
           for (const poi of location.pois) {
-            nearbyPlaces.push({
+            console.log('Processing POI:', poi.name, 'Vendor:', poi.vendor);
+            
+            const placeData = {
               id: poi.id,
               name: poi.name,
               category: poi.category,
               description: poi.description,
               type: 'poi',
-              place_type: poi.category, // Use actual POI category instead of hardcoded 'restaurant'
-              business_type: poi.type, // Include the type field
+              place_type: poi.category,
+              business_type: poi.type,
               latitude: location.latitude,
               longitude: location.longitude,
               address: location.address,
@@ -489,12 +516,31 @@ export class TravellerRepository {
               district: location.district,
               province: location.province,
               distance_km: Math.round(distance * 100) / 100
-            });
+            };
+
+            // Add image data for POIs
+            if (poi.vendor?.vendor_profile) {
+              placeData.cover_image = poi.vendor.vendor_profile.cover_url;
+              placeData.logo_image = poi.vendor.vendor_profile.logo_url;
+              placeData.images = [];
+              
+              if (poi.vendor.vendor_profile.cover_url) {
+                placeData.images.push(poi.vendor.vendor_profile.cover_url);
+              }
+              if (poi.vendor.vendor_profile.logo_url && poi.vendor.vendor_profile.logo_url !== poi.vendor.vendor_profile.cover_url) {
+                placeData.images.push(poi.vendor.vendor_profile.logo_url);
+              }
+            }
+
+            console.log('POI with images:', placeData);
+            nearbyPlaces.push(placeData);
           }
 
           // Add hidden gems from this location
           for (const hiddenPlace of location.hidden_places) {
-            nearbyPlaces.push({
+            console.log('Processing Hidden Place:', hiddenPlace.title, 'Picture:', hiddenPlace.picture);
+            
+            const placeData = {
               id: hiddenPlace.id,
               name: hiddenPlace.title,
               category: 'hidden_gem',
@@ -508,7 +554,16 @@ export class TravellerRepository {
               district: location.district,
               province: location.province,
               distance_km: Math.round(distance * 100) / 100
-            });
+            };
+
+            // Add image data for hidden places
+            if (hiddenPlace.picture) {
+              placeData.cover_image = hiddenPlace.picture.url;
+              placeData.images = [hiddenPlace.picture.url];
+            }
+
+            console.log('Hidden Place with images:', placeData);
+            nearbyPlaces.push(placeData);
           }
         }
       }
@@ -516,6 +571,7 @@ export class TravellerRepository {
       // Sort by distance (closest first) and return
       nearbyPlaces.sort((a, b) => a.distance_km - b.distance_km);
       console.log(`Found ${nearbyPlaces.length} places within ${radius}km radius`);
+      console.log('Final nearby places with images:', nearbyPlaces);
       
       return nearbyPlaces;
 
